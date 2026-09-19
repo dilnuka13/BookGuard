@@ -104,21 +104,23 @@ export function DesktopSidebar() {
       </nav>
 
       {/* Bottom Controls: Theme Toggle and Sign Out */}
-      <div className="border-t border-border p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground">
-            Theme
-          </span>
-          <ThemeToggle variant="segmented" />
+      <div className="border-t border-border/60 p-4 space-y-3.5 bg-card/30">
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+              Appearance
+            </span>
+          </div>
+          <ThemeToggle variant="segmented" className="w-full" />
         </div>
 
         <button
           type="button"
           onClick={handleSignOut}
           disabled={isSigningOut}
-          className="flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive active:scale-[0.98] disabled:opacity-50"
+          className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3.5 py-2 text-sm font-medium text-muted-foreground transition-all duration-150 hover:bg-destructive/10 hover:text-destructive active:scale-[0.98] disabled:opacity-50"
         >
-          <LogOut className="h-5 w-5" />
+          <LogOut className="h-4 w-4" />
           <span>{isSigningOut ? "Signing out..." : "Sign Out"}</span>
         </button>
       </div>

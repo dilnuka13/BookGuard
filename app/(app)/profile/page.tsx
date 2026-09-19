@@ -167,7 +167,7 @@ export default async function ProfilePage() {
               Customizes colors and contrast across all BookGuard views.
             </p>
           </div>
-          <ThemeToggle variant="segmented" />
+          <ThemeToggle variant="segmented" className="sm:w-72" />
         </CardContent>
       </Card>
 

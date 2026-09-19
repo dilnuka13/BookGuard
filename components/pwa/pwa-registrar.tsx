@@ -19,26 +19,35 @@ export function PwaRegistrar() {
   React.useEffect(() => {
     // 1. Service Worker Registration
     if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker
-          .register("/sw.js")
-          .then((registration) => {
-            // Check for service worker updates
-            registration.addEventListener("updatefound", () => {
-              const newWorker = registration.installing;
-              if (newWorker) {
-                newWorker.addEventListener("statechange", () => {
-                  if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
-                    setUpdateAvailable(true);
-                  }
-                });
-              }
+      if (process.env.NODE_ENV === "development") {
+        // In dev mode, unregister any active service worker to avoid interfering with HMR / fast refresh
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          for (const reg of registrations) {
+            reg.unregister();
+          }
+        });
+      } else {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("/sw.js")
+            .then((registration) => {
+              // Check for service worker updates
+              registration.addEventListener("updatefound", () => {
+                const newWorker = registration.installing;
+                if (newWorker) {
+                  newWorker.addEventListener("statechange", () => {
+                    if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+                      setUpdateAvailable(true);
+                    }
+                  });
+                }
+              });
+            })
+            .catch((err) => {
+              console.warn("Service worker registration failed:", err);
             });
-          })
-          .catch((err) => {
-            console.warn("Service worker registration failed:", err);
-          });
-      });
+        });
+      }
     }
 
     // 2. Catch PWA Install Prompt (Chrome / Android / Edge)

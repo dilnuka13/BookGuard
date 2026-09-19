@@ -1,0 +1,20 @@
+# Settings for Firebase App Hosting (Next.js 15 App Router)
+runConfig:
+  minInstances: 0
+  maxInstances: 2
+  concurrency: 80
+  cpu: 1
+  memoryMiB: 1024
+
+# Environment variables needed for Next.js build and runtime
+env:
+  - variable: NEXT_PUBLIC_SUPABASE_URL
+    value: https://kktssqxwzmyrifmjgmko.supabase.co
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_SUPABASE_ANON_KEY
+    value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtrdHNzcXh3em15cmlmbWpnbWtvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3OTc2NTUsImV4cCI6MjEwNTM3MzY1NX0.1agYAwaoQdJdheekgO1leHNpAVavCsPC8ikpuscRsns
+    availability:
+      - BUILD
+      - RUNTIME

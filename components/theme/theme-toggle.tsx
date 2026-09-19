@@ -11,7 +11,7 @@ interface ThemeToggleProps {
 }
 
 export function ThemeToggle({ variant = "segmented", className }: ThemeToggleProps) {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
@@ -23,7 +23,9 @@ export function ThemeToggle({ variant = "segmented", className }: ThemeTogglePro
     return (
       <div
         className={cn(
-          "h-11 w-full max-w-[200px] rounded-xl bg-muted/50 animate-pulse",
+          variant === "button"
+            ? "h-9 w-9 rounded-xl bg-muted/50 animate-pulse"
+            : "h-10 w-full rounded-xl bg-muted/50 animate-pulse",
           className
         )}
       />
@@ -31,20 +33,22 @@ export function ThemeToggle({ variant = "segmented", className }: ThemeTogglePro
   }
 
   if (variant === "button") {
+    const isDark = resolvedTheme === "dark";
     return (
       <button
         type="button"
-        onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+        onClick={() => setTheme(isDark ? "light" : "dark")}
         className={cn(
-          "inline-flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card text-foreground transition-colors hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary",
+          "inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-card/80 text-foreground transition-all duration-200 hover:bg-muted hover:border-primary/40 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary shadow-sm",
           className
         )}
         aria-label="Toggle theme"
+        title={isDark ? "Switch to light mode" : "Switch to dark mode"}
       >
-        {theme === "dark" ? (
-          <Sun className="h-5 w-5 text-amber-400" />
+        {isDark ? (
+          <Sun className="h-4 w-4 text-amber-400 transition-transform duration-200 hover:rotate-45" />
         ) : (
-          <Moon className="h-5 w-5 text-slate-700" />
+          <Moon className="h-4 w-4 text-slate-700 dark:text-cyan-400 transition-transform duration-200 hover:-rotate-12" />
         )}
       </button>
     );
@@ -55,7 +59,7 @@ export function ThemeToggle({ variant = "segmented", className }: ThemeTogglePro
       role="radiogroup"
       aria-label="Color theme selection"
       className={cn(
-        "inline-flex h-11 items-center rounded-xl border border-border bg-muted/60 p-1 text-muted-foreground",
+        "grid grid-cols-3 h-10 w-full items-center rounded-xl border border-border/70 bg-muted/60 p-1 text-muted-foreground shadow-sm",
         className
       )}
     >
@@ -65,15 +69,15 @@ export function ThemeToggle({ variant = "segmented", className }: ThemeTogglePro
         aria-checked={theme === "light"}
         onClick={() => setTheme("light")}
         className={cn(
-          "flex h-9 min-w-[44px] items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-all",
+          "flex h-8 items-center justify-center gap-1.5 rounded-lg text-xs font-medium transition-all duration-200",
           theme === "light"
-            ? "bg-card text-foreground shadow-sm"
-            : "hover:text-foreground"
+            ? "bg-card text-foreground shadow-sm font-semibold scale-[1.02]"
+            : "hover:text-foreground hover:bg-card/40"
         )}
         title="Light theme"
       >
-        <Sun className="h-4 w-4 text-amber-500" />
-        <span className="hidden sm:inline">Light</span>
+        <Sun className={cn("h-3.5 w-3.5 shrink-0", theme === "light" ? "text-amber-500" : "text-muted-foreground")} />
+        <span className="text-[11px] font-medium">Light</span>
       </button>
 
       <button
@@ -82,15 +86,15 @@ export function ThemeToggle({ variant = "segmented", className }: ThemeTogglePro
         aria-checked={theme === "dark"}
         onClick={() => setTheme("dark")}
         className={cn(
-          "flex h-9 min-w-[44px] items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-all",
+          "flex h-8 items-center justify-center gap-1.5 rounded-lg text-xs font-medium transition-all duration-200",
           theme === "dark"
-            ? "bg-card text-foreground shadow-sm"
-            : "hover:text-foreground"
+            ? "bg-card text-foreground shadow-sm font-semibold scale-[1.02]"
+            : "hover:text-foreground hover:bg-card/40"
         )}
         title="Dark theme"
       >
-        <Moon className="h-4 w-4 text-cyan-400" />
-        <span className="hidden sm:inline">Dark</span>
+        <Moon className={cn("h-3.5 w-3.5 shrink-0", theme === "dark" ? "text-cyan-400" : "text-muted-foreground")} />
+        <span className="text-[11px] font-medium">Dark</span>
       </button>
 
       <button
@@ -99,16 +103,17 @@ export function ThemeToggle({ variant = "segmented", className }: ThemeTogglePro
         aria-checked={theme === "system"}
         onClick={() => setTheme("system")}
         className={cn(
-          "flex h-9 min-w-[44px] items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-all",
+          "flex h-8 items-center justify-center gap-1.5 rounded-lg text-xs font-medium transition-all duration-200",
           theme === "system"
-            ? "bg-card text-foreground shadow-sm"
-            : "hover:text-foreground"
+            ? "bg-card text-foreground shadow-sm font-semibold scale-[1.02]"
+            : "hover:text-foreground hover:bg-card/40"
         )}
         title="System theme"
       >
-        <Monitor className="h-4 w-4 text-emerald-500" />
-        <span className="hidden sm:inline">System</span>
+        <Monitor className={cn("h-3.5 w-3.5 shrink-0", theme === "system" ? "text-emerald-500" : "text-muted-foreground")} />
+        <span className="text-[11px] font-medium">System</span>
       </button>
     </div>
   );
 }
+

@@ -54,9 +54,16 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Use getUser() rather than getSession() to securely validate session with Supabase auth server
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user = null;
+  try {
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
+    user = authUser;
+  } catch (err) {
+    // Network or offline fallback: user is treated as unauthenticated
+    user = null;
+  }
 
   // 1. Unauthenticated users:
   if (!user) {

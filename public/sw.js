@@ -124,6 +124,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Default: Network fetch
-  event.respondWith(fetch(request));
+  // Default: Do NOT call event.respondWith().
+  // Let the browser handle all other requests natively via standard network stack.
 });
+

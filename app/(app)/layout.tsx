@@ -4,6 +4,7 @@ import { DesktopSidebar } from "@/components/navigation/desktop-sidebar";
 import { MobileBottomNav } from "@/components/navigation/mobile-bottom-nav";
 import { BookGuardLogo } from "@/components/branding/bookguard-logo";
 import { UserAvatar } from "@/components/profile/user-avatar";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { NetworkStatus } from "@/components/offline/network-status";
 import Link from "next/link";
 
@@ -47,7 +48,8 @@ export default async function AppLayout({
         <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-border bg-card/90 px-4 backdrop-blur-md md:hidden pt-[max(0.5rem,env(safe-area-inset-top,0px))]">
           <BookGuardLogo variant="mark" href="/" />
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            <ThemeToggle variant="button" className="h-9 w-9 rounded-xl" />
             <Link
               href="/profile"
               className="flex items-center gap-2 rounded-full focus:outline-none focus:ring-2 focus:ring-primary"
