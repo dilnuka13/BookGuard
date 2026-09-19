@@ -1,0 +1,144 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 160 84% 39%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 32% 94%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 32% 94%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 187 85% 42%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214 24% 88%;
+    --input: 214 24% 88%;
+    --ring: 160 84% 39%;
+
+    --radius: 0.875rem;
+
+    /* BookGuard Brand Specific Tokens */
+    --brand-navy: 221 68% 11%;
+    --brand-emerald: 160 84% 39%;
+    --brand-teal: 173 80% 40%;
+    --brand-cyan: 189 94% 43%;
+
+    /* Safe Area Variables */
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --sal: env(safe-area-inset-left, 0px);
+    --sar: env(safe-area-inset-right, 0px);
+  }
+
+  .dark {
+    --background: 218 44% 8%;
+    --foreground: 210 40% 98%;
+
+    --card: 218 38% 12%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 218 38% 12%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 160 76% 46%;
+    --primary-foreground: 218 44% 8%;
+
+    --secondary: 218 28% 17%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 218 28% 17%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 189 90% 48%;
+    --accent-foreground: 218 44% 8%;
+
+    --destructive: 0 62.8% 45%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 218 28% 19%;
+    --input: 218 28% 19%;
+    --ring: 160 76% 46%;
+
+    /* BookGuard Brand Specific Tokens in Dark Mode */
+    --brand-navy: 218 44% 8%;
+    --brand-emerald: 160 76% 46%;
+    --brand-teal: 173 80% 44%;
+    --brand-cyan: 189 94% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Minimum touch target for accessibility */
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
+  }
+}
+
+/* Safe area utility classes */
+.pt-safe {
+  padding-top: max(1rem, env(safe-area-inset-top, 0px));
+}
+
+.pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+}
+
+.pl-safe {
+  padding-left: max(1rem, env(safe-area-inset-left, 0px));
+}
+
+.pr-safe {
+  padding-right: max(1rem, env(safe-area-inset-right, 0px));
+}
+
+.pb-bottom-nav {
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Glassmorphism utility */
+.glass-panel {
+  background: hsla(var(--card) / 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Smooth transitions */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

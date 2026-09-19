@@ -1,0 +1,56 @@
+{
+  "name": "BookGuard — Personal Library & Buying Planner",
+  "short_name": "BookGuard",
+  "description": "Smart personal book-library application. Know your shelf before you buy and prevent accidental duplicate purchases.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0B111D",
+  "theme_color": "#059669",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["books", "lifestyle", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Scan Book",
+      "short_name": "Scan",
+      "description": "Quickly scan a barcode or book cover",
+      "url": "/scan",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Book Fair Mode",
+      "short_name": "Book Fair",
+      "description": "Distraction-free personal buying planner",
+      "url": "/cart/fair",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "My Library",
+      "short_name": "Library",
+      "description": "View and search your cataloged books",
+      "url": "/library",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
