@@ -1,20 +1,13 @@
-import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { ScannerClientWrapper } from "@/components/scanner/scanner-client-wrapper";
 import { Button } from "@/components/ui/button";
 import { History } from "lucide-react";
 
 export default async function ScanPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
+  const headersList = await headers();
+  const userId = headersList.get("x-bookguard-user-id") ?? "";
 
   return (
     <div className="space-y-4 max-w-2xl mx-auto pb-6">
@@ -33,7 +26,8 @@ export default async function ScanPage() {
       </div>
 
       {/* Main Scanner Container (Client Dynamic Bundle) */}
-      <ScannerClientWrapper userId={user.id} />
+      <ScannerClientWrapper userId={userId} />
     </div>
   );
 }
+

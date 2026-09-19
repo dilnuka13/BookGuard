@@ -61,9 +61,9 @@ export function BookGuardLogo({
         priority={priority}
         className={cn(
           "h-auto w-auto object-contain select-none",
-          variant === "horizontal" && "h-12 sm:h-14 w-auto max-w-[260px] sm:max-w-[300px]",
-          variant === "mark" && "h-10 w-10 sm:h-12 sm:w-12",
-          variant === "icon" && "h-14 w-14 rounded-2xl shadow-md",
+          !imageClassName && variant === "horizontal" && "h-12 sm:h-14 w-auto max-w-[260px] sm:max-w-[300px]",
+          !imageClassName && variant === "mark" && "h-10 w-10 sm:h-12 sm:w-12",
+          !imageClassName && variant === "icon" && "h-14 w-14 rounded-2xl shadow-md",
           imageClassName
         )}
       />

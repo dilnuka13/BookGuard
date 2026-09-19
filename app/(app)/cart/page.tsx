@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { CartView } from "@/components/cart/cart-view";
@@ -10,16 +10,11 @@ export const metadata = {
 };
 
 export default async function CartPage() {
+  const headersList = await headers();
+  const userId = headersList.get("x-bookguard-user-id") ?? "";
+
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  const items = await getCartItems(supabase, user.id);
+  const items = await getCartItems(supabase, userId);
 
   return (
     <div className="space-y-6">
@@ -28,7 +23,8 @@ export default async function CartPage() {
         description="Plan books you want to purchase at fairs and bookstores, calculate totals, and track your budget."
       />
 
-      <CartView initialItems={items} userId={user.id} />
+      <CartView initialItems={items} userId={userId} />
     </div>
   );
 }
+

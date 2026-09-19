@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { House, BookOpen, ScanLine, ShoppingCart, UserRound } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils/cn";
 
 interface NavItem {
@@ -26,9 +27,28 @@ export function MobileBottomNav() {
   return (
     <nav
       aria-label="Mobile navigation"
-      className="fixed bottom-0 left-0 right-0 z-40 md:hidden border-t border-border bg-card/95 backdrop-blur-lg pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]"
+      className="fixed bottom-0 left-0 right-0 z-40 md:hidden pointer-events-none"
+      style={{
+        paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom, 0px))",
+      }}
     >
-      <div className="flex h-16 items-center justify-around px-2">
+      {/* ─── Glassmorphism Floating Pill ─── */}
+      <div
+        className={cn(
+          "pointer-events-auto mx-4 flex h-[64px] items-center justify-around",
+          "rounded-[32px] px-2",
+          // Glass layers: semi-transparent base + blur
+          "bg-white/[0.08] dark:bg-white/[0.06]",
+          "backdrop-blur-2xl",
+          // Border: thin light edge with gradient shimmer effect
+          "border border-white/20 dark:border-white/10",
+          // Inner top highlight line (glass edge glow)
+          "ring-1 ring-inset ring-white/10 dark:ring-white/[0.06]",
+          // Soft outer glow / elevation shadow
+          "shadow-[0_8px_40px_-6px_rgba(0,0,0,0.25),0_2px_12px_-2px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.15)]",
+          "dark:shadow-[0_8px_40px_-6px_rgba(0,0,0,0.6),0_2px_12px_-2px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)]"
+        )}
+      >
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive =
@@ -36,26 +56,45 @@ export function MobileBottomNav() {
               ? pathname === "/"
               : pathname.startsWith(item.href);
 
+          /* ── Scan (primary) — elevated glowing circle ── */
           if (item.isPrimaryAction) {
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className="group relative -top-3 flex flex-col items-center focus:outline-none"
+                className="group relative -top-5 flex flex-col items-center focus:outline-none"
                 aria-label="Scan a book"
               >
+                {/* Outer glow ring */}
                 <div
                   className={cn(
-                    "flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-cyan-500 text-white shadow-lg shadow-emerald-600/30 transition-transform active:scale-95 group-hover:scale-105 border-2 border-background",
-                    isActive && "ring-2 ring-primary ring-offset-2 ring-offset-background"
+                    "absolute -inset-1 rounded-full opacity-0 blur-md transition-opacity duration-300",
+                    "bg-gradient-to-tr from-emerald-500 to-cyan-400",
+                    isActive ? "opacity-60" : "group-hover:opacity-40"
+                  )}
+                />
+                <motion.div
+                  whileTap={{ scale: 0.9 }}
+                  whileHover={{ scale: 1.08 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                  className={cn(
+                    "relative flex h-[56px] w-[56px] items-center justify-center rounded-full",
+                    "bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-400",
+                    "text-white",
+                    "border-[3px] border-white/20 dark:border-black/20",
+                    // Glass sheen on the button
+                    "shadow-[0_4px_24px_-4px_rgba(5,150,105,0.6),inset_0_1px_0_rgba(255,255,255,0.35)]",
+                    isActive && "ring-2 ring-primary/60 ring-offset-2 ring-offset-transparent"
                   )}
                 >
-                  <Icon className="h-6 w-6 stroke-[2.2]" />
-                </div>
+                  {/* Inner highlight arc */}
+                  <span className="absolute inset-x-2 top-1.5 h-3 rounded-full bg-white/20 blur-sm" />
+                  <Icon className="relative z-10 h-6 w-6 stroke-[2.2]" />
+                </motion.div>
                 <span
                   className={cn(
                     "mt-1 text-[10px] font-semibold tracking-tight transition-colors",
-                    isActive ? "text-primary font-bold" : "text-muted-foreground"
+                    isActive ? "text-primary" : "text-white/60 dark:text-white/50"
                   )}
                 >
                   {item.name}
@@ -69,24 +108,56 @@ export function MobileBottomNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex min-h-[44px] min-w-[48px] flex-col items-center justify-center rounded-xl px-2 py-1 transition-colors active:scale-95",
+                "group relative flex flex-col items-center justify-center gap-0.5",
+                "min-h-[48px] min-w-[52px] rounded-2xl px-2 py-2",
+                "transition-colors duration-200",
                 isActive
-                  ? "text-primary font-semibold"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "text-primary"
+                  : "text-white/55 dark:text-white/40 hover:text-white/80"
               )}
             >
-              <div className="relative">
+              {/* Active glass pill indicator */}
+              <AnimatePresence>
+                {isActive && (
+                  <motion.span
+                    layoutId="nav-active-pill"
+                    className={cn(
+                      "absolute inset-x-0.5 top-1 h-[34px] rounded-xl",
+                      "bg-white/15 dark:bg-white/10",
+                      "border border-white/20 dark:border-white/10",
+                      "shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]"
+                    )}
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.85 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  />
+                )}
+              </AnimatePresence>
+
+              <motion.div
+                whileTap={{ scale: 0.85 }}
+                transition={{ type: "spring", stiffness: 500, damping: 25 }}
+                className="relative z-10"
+              >
                 <Icon
                   className={cn(
-                    "h-5 w-5 transition-transform",
-                    isActive && "stroke-[2.4]"
+                    "h-[22px] w-[22px] transition-all duration-200",
+                    isActive
+                      ? "stroke-[2.4] drop-shadow-[0_0_6px_rgba(16,185,129,0.5)]"
+                      : "stroke-[1.7] group-hover:scale-110"
                   )}
                 />
-                {isActive && (
-                  <span className="absolute -bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-primary" />
+              </motion.div>
+
+              <span
+                className={cn(
+                  "relative z-10 text-[10px] font-medium leading-none tracking-tight transition-all duration-200",
+                  isActive && "font-semibold"
                 )}
-              </div>
-              <span className="mt-1 text-[10px] tracking-tight">{item.name}</span>
+              >
+                {item.name}
+              </span>
             </Link>
           );
         })}

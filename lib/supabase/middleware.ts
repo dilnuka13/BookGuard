@@ -115,5 +115,11 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Attach the verified user-id as a response header so the layout can read
+  // it without making a second getUser() round-trip.
+  if (user) {
+    supabaseResponse.headers.set("x-bookguard-user-id", user.id);
+  }
+
   return supabaseResponse;
 }

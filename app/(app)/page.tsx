@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { StatCard } from "@/components/layout/stat-card";
@@ -18,10 +19,10 @@ import {
 } from "lucide-react";
 
 export default async function DashboardPage() {
+  const headersList = await headers();
+  const userId = headersList.get("x-bookguard-user-id") ?? "";
+
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   const [
     profileRes,
@@ -35,37 +36,37 @@ export default async function DashboardPage() {
     supabase
       .from("profiles")
       .select("full_name")
-      .eq("id", user?.id || "")
+      .eq("id", userId)
       .maybeSingle(),
     supabase
       .from("library_items")
       .select("*", { count: "exact", head: true })
-      .eq("user_id", user?.id || ""),
+      .eq("user_id", userId),
     supabase
       .from("wishlist_items")
       .select("*", { count: "exact", head: true })
-      .eq("user_id", user?.id || ""),
+      .eq("user_id", userId),
     supabase
       .from("cart_items")
       .select("*", { count: "exact", head: true })
-      .eq("user_id", user?.id || ""),
+      .eq("user_id", userId),
     supabase
       .from("purchase_history")
       .select("*", { count: "exact", head: true })
-      .eq("user_id", user?.id || ""),
-    user ? getRecentlyAddedBooks(supabase, user.id, 6) : Promise.resolve([]),
-    user ? getRecentScans(supabase, user.id, 5) : Promise.resolve([]),
+      .eq("user_id", userId),
+    userId ? getRecentlyAddedBooks(supabase, userId, 6) : Promise.resolve([]),
+    userId ? getRecentScans(supabase, userId, 5) : Promise.resolve([]),
   ]);
 
   const firstName =
     profileRes.data?.full_name?.split(" ")[0] ||
-    user?.email?.split("@")[0] ||
     "Reader";
 
   const totalBooksCount = libraryCountRes.count || 0;
   const wishlistCount = wishlistCountRes.count || 0;
   const cartCount = cartCountRes.count || 0;
   const purchaseCount = purchaseCountRes.count || 0;
+
 
   return (
     <div className="space-y-6 sm:space-y-8">

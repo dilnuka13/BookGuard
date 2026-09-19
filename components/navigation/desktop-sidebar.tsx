@@ -59,8 +59,14 @@ export function DesktopSidebar() {
       className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 z-30 border-r border-border bg-card/95 backdrop-blur-sm"
     >
       {/* Top Branding */}
-      <div className="flex h-20 items-center px-6 border-b border-border/50">
-        <BookGuardLogo variant="horizontal" href="/" priority />
+      <div className="flex h-16 items-center px-5 border-b border-border/50 shrink-0">
+        <BookGuardLogo
+          variant="horizontal"
+          href="/"
+          priority
+          withBackdropInDark={false}
+          imageClassName="h-8 w-auto max-w-[160px]"
+        />
       </div>
 
       {/* Navigation Links */}

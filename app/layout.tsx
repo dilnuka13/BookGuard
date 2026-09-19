@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { ToastProvider } from "@/components/ui/toast";
 import { PwaRegistrar } from "@/components/pwa/pwa-registrar";
+import { AppSplashScreen } from "@/components/pwa/app-splash-screen";
 import "@/app/globals.css";
 
 export const metadata: Metadata = {
@@ -62,6 +63,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <ToastProvider>
+            <AppSplashScreen />
             <PwaRegistrar />
             {children}
           </ToastProvider>

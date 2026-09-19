@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { WishlistView } from "@/components/wishlist/wishlist-view";
@@ -10,16 +10,11 @@ export const metadata = {
 };
 
 export default async function WishlistPage() {
+  const headersList = await headers();
+  const userId = headersList.get("x-bookguard-user-id") ?? "";
+
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  const items = await getWishlistItems(supabase, user.id);
+  const items = await getWishlistItems(supabase, userId);
 
   return (
     <div className="space-y-6">
@@ -28,7 +23,8 @@ export default async function WishlistPage() {
         description="Save books you want to acquire or remember while browsing and scanning."
       />
 
-      <WishlistView initialItems={items} userId={user.id} />
+      <WishlistView initialItems={items} userId={userId} />
     </div>
   );
 }
+

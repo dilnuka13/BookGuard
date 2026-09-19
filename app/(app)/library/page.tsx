@@ -1,29 +1,24 @@
-import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { LibraryView } from "@/components/library/library-view";
 import { getLibraryItems, getLibraryFilterOptions } from "@/lib/books/queries";
 
 export default async function LibraryPage() {
+  const headersList = await headers();
+  const userId = headersList.get("x-bookguard-user-id") ?? "";
+
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
 
   // Fetch initial books and distinct categories/languages in parallel
   const [libraryData, filterOptions] = await Promise.all([
     getLibraryItems(supabase, {
-      userId: user.id,
+      userId,
       page: 1,
       pageSize: 24,
       sort: "recent",
     }),
-    getLibraryFilterOptions(supabase, user.id),
+    getLibraryFilterOptions(supabase, userId),
   ]);
 
   return (
@@ -38,8 +33,9 @@ export default async function LibraryPage() {
         initialTotalCount={libraryData.totalCount}
         availableCategories={filterOptions.categories}
         availableLanguages={filterOptions.languages}
-        userId={user.id}
+        userId={userId}
       />
     </div>
   );
 }
+

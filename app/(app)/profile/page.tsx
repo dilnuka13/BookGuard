@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { ProfileForm } from "@/components/profile/profile-form";
@@ -10,24 +10,20 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 export default async function ProfilePage() {
+  const headersList = await headers();
+  const userId = headersList.get("x-bookguard-user-id") ?? "";
+
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("*")
-    .eq("id", user.id)
+    .eq("id", userId)
     .single();
 
   if (!profile) {
-    redirect("/onboarding");
+    // Middleware ensures onboarding, so this is a safety fallback only
+    return null;
   }
 
   // Fetch real counts for library, wishlist, cart, and purchases
@@ -40,19 +36,19 @@ export default async function ProfilePage() {
     supabase
       .from("library_items")
       .select("*", { count: "exact", head: true })
-      .eq("user_id", user.id),
+      .eq("user_id", userId),
     supabase
       .from("wishlist_items")
       .select("*", { count: "exact", head: true })
-      .eq("user_id", user.id),
+      .eq("user_id", userId),
     supabase
       .from("cart_items")
       .select("*", { count: "exact", head: true })
-      .eq("user_id", user.id),
+      .eq("user_id", userId),
     supabase
       .from("purchase_history")
       .select("*", { count: "exact", head: true })
-      .eq("user_id", user.id),
+      .eq("user_id", userId),
   ]);
 
   const formattedJoinDate = profile.created_at
@@ -185,7 +181,7 @@ export default async function ProfilePage() {
         </CardHeader>
         <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-2">
           <div className="text-xs text-muted-foreground space-y-0.5">
-            <p className="font-medium text-foreground">User ID: <span className="font-mono text-[11px] text-muted-foreground">{user.id}</span></p>
+            <p className="font-medium text-foreground">User ID: <span className="font-mono text-[11px] text-muted-foreground">{userId}</span></p>
             <p>Account role: <span className="font-semibold uppercase text-emerald-600 dark:text-emerald-400">{profile.role}</span></p>
           </div>
           <SignOutButton />

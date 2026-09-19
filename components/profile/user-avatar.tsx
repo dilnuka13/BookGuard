@@ -3,10 +3,15 @@
 import * as React from "react";
 import Image from "next/image";
 import { cn } from "@/lib/utils/cn";
+import { createClient } from "@/lib/supabase/client";
 
 interface UserAvatarProps {
   src?: string | null;
   name?: string | null;
+  /** When provided, the component self-fetches profile data client-side.
+   *  This removes the need for the parent layout to make a server-side
+   *  profiles DB query on every navigation. */
+  userId?: string;
   size?: "sm" | "md" | "lg" | "xl";
   className?: string;
 }
@@ -31,15 +36,43 @@ const SIZE_MAP = {
 };
 
 export function UserAvatar({
-  src,
-  name,
+  src: srcProp,
+  name: nameProp,
+  userId,
   size = "md",
   className,
 }: UserAvatarProps) {
   const [imageError, setImageError] = React.useState(false);
+  const [fetchedSrc, setFetchedSrc] = React.useState<string | null>(null);
+  const [fetchedName, setFetchedName] = React.useState<string | null>(null);
+
+  // Self-fetch profile when userId is provided (layout optimization path).
+  // Runs once client-side; parent layout no longer needs a server profiles query.
+  React.useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    const supabase = createClient();
+    supabase
+      .from("profiles")
+      .select("avatar_url, full_name")
+      .eq("id", userId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled || !data) return;
+        setFetchedSrc(data.avatar_url ?? null);
+        setFetchedName(data.full_name ?? null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
   const sizeConfig = SIZE_MAP[size];
 
-  // Derive initials
+  const src = srcProp ?? fetchedSrc;
+  const name = nameProp ?? fetchedName;
+
+  // Derive initials from name
   const initials = React.useMemo(() => {
     if (!name) return "BG";
     const parts = name.trim().split(/\s+/);
