@@ -21,6 +21,7 @@ import { recordScanHistory } from "@/lib/scanner/history";
 import { checkOfflineIsbn } from "@/lib/offline/library-cache";
 import { enqueueMutation } from "@/lib/offline/db";
 import { triggerHaptic } from "@/lib/utils/haptics";
+import { triggerDynamicIsland } from "@/components/ui/dynamic-island-alert";
 import { addToCart, checkCartDuplicate } from "@/lib/cart/queries";
 import { addToWishlist, checkWishlistDuplicate } from "@/lib/wishlist/queries";
 import type { MatchCandidate, MatchResult } from "@/lib/matching/types";
@@ -65,12 +66,38 @@ export function SmartBookScanner({ userId }: SmartBookScannerProps) {
   const deliverResult = React.useCallback((result: MatchResult) => {
     setMatchResult(result);
     setScannerState("result");
+
+    const bookTitle =
+      result.matchedBook?.title ||
+      result.scannedData.title ||
+      (result.scannedData.isbn ? `ISBN ${result.scannedData.isbn}` : "Scanned Book");
+    const bookAuthor = result.matchedBook?.author || result.scannedData.author || undefined;
+    const coverUrl = result.matchedBook?.cover_url || result.scannedData.coverUrl || null;
+
     if (result.result === "OWNED") {
-      triggerHaptic("warning");
+      triggerDynamicIsland({
+        type: "OWNED",
+        title: bookTitle,
+        author: bookAuthor,
+        coverUrl,
+        isbn: result.scannedData.isbn,
+      });
     } else if (result.result === "POSSIBLE_DUPLICATE") {
-      triggerHaptic("medium");
+      triggerDynamicIsland({
+        type: "POSSIBLE_DUPLICATE",
+        title: bookTitle,
+        author: bookAuthor,
+        coverUrl,
+        isbn: result.scannedData.isbn,
+      });
     } else if (result.result === "NEW") {
-      triggerHaptic("success");
+      triggerDynamicIsland({
+        type: "NEW",
+        title: bookTitle,
+        author: bookAuthor,
+        coverUrl,
+        isbn: result.scannedData.isbn,
+      });
     }
   }, []);
 

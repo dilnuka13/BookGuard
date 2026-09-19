@@ -34,21 +34,45 @@ export function ThemeToggle({ variant = "segmented", className }: ThemeTogglePro
 
   if (variant === "button") {
     const isDark = resolvedTheme === "dark";
+    const isSystem = theme === "system";
+
+    const cycleTheme = () => {
+      if (theme === "system") {
+        setTheme("dark");
+      } else if (theme === "dark") {
+        setTheme("light");
+      } else {
+        setTheme("system");
+      }
+    };
+
     return (
       <button
         type="button"
-        onClick={() => setTheme(isDark ? "light" : "dark")}
+        onClick={cycleTheme}
         className={cn(
-          "inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-card/80 text-foreground transition-all duration-200 hover:bg-muted hover:border-primary/40 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary shadow-sm",
+          "relative inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border/70 bg-card/80 text-foreground transition-all duration-200 hover:bg-muted hover:border-primary/40 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary shadow-sm",
           className
         )}
-        aria-label="Toggle theme"
-        title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+        aria-label="Toggle theme appearance"
+        title={
+          isSystem
+            ? `iOS System Auto (${isDark ? "Dark" : "Light"}) • Click to lock mode`
+            : `Locked to ${theme} mode • Click to switch`
+        }
       >
         {isDark ? (
-          <Sun className="h-4 w-4 text-amber-400 transition-transform duration-200 hover:rotate-45" />
+          <Moon className="h-4 w-4 text-cyan-400 transition-transform duration-200 hover:-rotate-12" />
         ) : (
-          <Moon className="h-4 w-4 text-slate-700 dark:text-cyan-400 transition-transform duration-200 hover:-rotate-12" />
+          <Sun className="h-4 w-4 text-amber-500 transition-transform duration-200 hover:rotate-45" />
+        )}
+
+        {/* Small badge indicating it is automatically following iOS system appearance */}
+        {isSystem && (
+          <span
+            className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.9)]"
+            title="Auto-synced with iOS system settings"
+          />
         )}
       </button>
     );

@@ -85,13 +85,8 @@ export function MobileHeader({ userId }: MobileHeaderProps) {
         "sticky top-0 z-20 md:hidden",
         "flex items-center justify-between",
         "px-4 h-[60px]",
-        // Glassmorphism
-        "bg-white/[0.07] dark:bg-white/[0.04]",
-        "backdrop-blur-2xl",
-        "border-b border-white/10 dark:border-white/[0.07]",
-        // Subtle inner top highlight (glass edge)
-        "shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_1px_16px_rgba(0,0,0,0.08)]",
-        "dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_1px_16px_rgba(0,0,0,0.3)]"
+        // Apple-grade adaptive liquid glass that auto-adjusts to iOS settings
+        "liquid-glass border-b border-t-0 border-x-0 rounded-none shadow-sm"
       )}
       style={{
         paddingTop: "max(0px, env(safe-area-inset-top, 0px))",

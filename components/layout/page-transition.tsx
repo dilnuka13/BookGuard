@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 
 interface PageTransitionProps {
@@ -8,28 +8,26 @@ interface PageTransitionProps {
 }
 
 /**
- * Wraps page content with a smooth fade + subtle upward slide animation.
- * The `key` on the motion div changes with the pathname, triggering
- * AnimatePresence to animate out the old page and in the new one.
+ * Fast, fluid page transition.
+ * Avoids blocking AnimatePresence `mode="wait"` and heavy `filter: blur`
+ * which cause noticeable lag and frame drops during mobile tab switching.
+ * Content mounts immediately and smoothly settles in 120ms.
  */
 export function PageTransition({ children }: PageTransitionProps) {
   const pathname = usePathname();
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={pathname}
-        initial={{ opacity: 0, y: 10, filter: "blur(2px)" }}
-        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-        exit={{ opacity: 0, y: -6, filter: "blur(1px)" }}
-        transition={{
-          duration: 0.22,
-          ease: [0.25, 0.46, 0.45, 0.94], // ease-out-quart
-        }}
-        style={{ willChange: "opacity, transform, filter" }}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
+    <motion.div
+      key={pathname}
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        duration: 0.12,
+        ease: "easeOut",
+      }}
+    >
+      {children}
+    </motion.div>
   );
 }
+

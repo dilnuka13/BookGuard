@@ -17,6 +17,13 @@ const SmartBookScanner = dynamic(
   }
 );
 
+export function preloadScanner() {
+  if (typeof window !== "undefined") {
+    import("@/components/scanner/smart-book-scanner").catch(() => {});
+  }
+}
+
 export function ScannerClientWrapper({ userId }: { userId: string }) {
   return <SmartBookScanner userId={userId} />;
 }
+

@@ -4,6 +4,9 @@ import { MobileBottomNav } from "@/components/navigation/mobile-bottom-nav";
 import { MobileHeader } from "@/components/navigation/mobile-header";
 import { NetworkStatus } from "@/components/offline/network-status";
 import { PageTransition } from "@/components/layout/page-transition";
+import { DynamicIslandAlert } from "@/components/ui/dynamic-island-alert";
+import { RouteProgressBar } from "@/components/navigation/route-progress-bar";
+import { SupabaseHeartbeat } from "@/components/database/supabase-heartbeat";
 
 export default async function AppLayout({
   children,
@@ -18,6 +21,15 @@ export default async function AppLayout({
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      {/* Background Supabase free-tier keep-alive heartbeat */}
+      <SupabaseHeartbeat />
+
+      {/* Instant route transition progress bar */}
+      <RouteProgressBar />
+
+      {/* Apple-style Dynamic Island Notification Alert */}
+      <DynamicIslandAlert />
+
       {/* Desktop Sidebar (visible on md+) */}
       <DesktopSidebar />
 

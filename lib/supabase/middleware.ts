@@ -38,7 +38,7 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  // Static files, PWA assets, offline shell, and OAuth callback are completely bypassed
+  // Static files, PWA assets, public APIs, offline shell, and OAuth callback are completely bypassed
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/logos") ||
@@ -48,7 +48,9 @@ export async function updateSession(request: NextRequest) {
     pathname === "/manifest.webmanifest" ||
     pathname === "/sw.js" ||
     pathname === "/offline" ||
-    pathname.startsWith("/auth/callback")
+    pathname.startsWith("/auth/callback") ||
+    pathname.startsWith("/api/keep-alive") ||
+    pathname.startsWith("/api/books/lookup")
   ) {
     return supabaseResponse;
   }

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { ProfileForm } from "@/components/profile/profile-form";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { DatabaseKeepAliveCard } from "@/components/profile/database-keep-alive-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { Palette, Shield, User, BookOpen, ArrowRight } from "lucide-react";
@@ -143,6 +144,9 @@ export default async function ProfilePage() {
           <ProfileForm initialProfile={profile} />
         </CardContent>
       </Card>
+
+      {/* Supabase Free-Tier Inactivity Shield */}
+      <DatabaseKeepAliveCard />
 
       {/* Theme Preferences Card */}
       <Card>

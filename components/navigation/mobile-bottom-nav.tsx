@@ -1,10 +1,12 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { House, BookOpen, ScanLine, ShoppingCart, UserRound } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils/cn";
+import { preloadScanner } from "@/components/scanner/scanner-client-wrapper";
 
 interface NavItem {
   name: string;
@@ -22,79 +24,104 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 export function MobileBottomNav() {
+  const router = useRouter();
   const pathname = usePathname();
+  const [optimisticHref, setOptimisticHref] = React.useState(pathname);
+
+  // Sync optimistic tab whenever actual pathname changes
+  React.useEffect(() => {
+    setOptimisticHref(pathname);
+  }, [pathname]);
+
+  // Aggressively prefetch all tab routes on mount for instant switching
+  React.useEffect(() => {
+    NAV_ITEMS.forEach((item) => {
+      router.prefetch(item.href);
+    });
+
+    // Idle-preload scanner heavy bundle (ZXing, OCR) so it opens in 0ms
+    const timer = setTimeout(() => {
+      preloadScanner();
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [router]);
 
   return (
     <nav
       aria-label="Mobile navigation"
       className="fixed bottom-0 left-0 right-0 z-40 md:hidden pointer-events-none"
       style={{
-        paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom, 0px))",
+        // Lowered position closer to bottom edge, keeping safe room above the home bar
+        paddingBottom: "max(0.35rem, calc(0.12rem + env(safe-area-inset-bottom, 0px)))",
       }}
     >
-      {/* ─── Glassmorphism Floating Pill ─── */}
+      {/* ─── Premium Glassmorphism Floating Pill ─── */}
       <div
         className={cn(
-          "pointer-events-auto mx-4 flex h-[64px] items-center justify-around",
-          "rounded-[32px] px-2",
-          // Glass layers: semi-transparent base + blur
-          "bg-white/[0.08] dark:bg-white/[0.06]",
-          "backdrop-blur-2xl",
-          // Border: thin light edge with gradient shimmer effect
-          "border border-white/20 dark:border-white/10",
-          // Inner top highlight line (glass edge glow)
-          "ring-1 ring-inset ring-white/10 dark:ring-white/[0.06]",
-          // Soft outer glow / elevation shadow
-          "shadow-[0_8px_40px_-6px_rgba(0,0,0,0.25),0_2px_12px_-2px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.15)]",
-          "dark:shadow-[0_8px_40px_-6px_rgba(0,0,0,0.6),0_2px_12px_-2px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)]"
+          "pointer-events-auto mx-3 sm:mx-auto max-w-lg flex h-[60px] items-center justify-around",
+          "rounded-[28px] px-1.5",
+          // Apple-grade adaptive liquid glass that auto-adjusts to iOS settings
+          "liquid-glass"
         )}
       >
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
+          const currentPath = optimisticHref || pathname;
           const isActive =
             item.href === "/"
-              ? pathname === "/"
-              : pathname.startsWith(item.href);
+              ? currentPath === "/"
+              : currentPath.startsWith(item.href);
 
-          /* ── Scan (primary) — elevated glowing circle ── */
+          /* ── Scan (primary) — elevated glowing button ── */
           if (item.isPrimaryAction) {
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className="group relative -top-5 flex flex-col items-center focus:outline-none"
+                prefetch={true}
+                onPointerDown={() => {
+                  setOptimisticHref(item.href);
+                  router.prefetch(item.href);
+                }}
+                onTouchStart={() => {
+                  setOptimisticHref(item.href);
+                  router.prefetch(item.href);
+                }}
+                className="group relative -top-3.5 flex flex-col items-center focus:outline-none"
                 aria-label="Scan a book"
               >
                 {/* Outer glow ring */}
                 <div
                   className={cn(
-                    "absolute -inset-1 rounded-full opacity-0 blur-md transition-opacity duration-300",
+                    "absolute -inset-1 rounded-full blur-md transition-opacity duration-300",
                     "bg-gradient-to-tr from-emerald-500 to-cyan-400",
-                    isActive ? "opacity-60" : "group-hover:opacity-40"
+                    isActive ? "opacity-65" : "opacity-0 group-hover:opacity-40"
                   )}
                 />
                 <motion.div
-                  whileTap={{ scale: 0.9 }}
-                  whileHover={{ scale: 1.08 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                  whileTap={{ scale: 0.92 }}
+                  whileHover={{ scale: 1.06 }}
+                  transition={{ type: "spring", stiffness: 450, damping: 22 }}
                   className={cn(
-                    "relative flex h-[56px] w-[56px] items-center justify-center rounded-full",
+                    "relative flex h-[52px] w-[52px] items-center justify-center rounded-full",
                     "bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-400",
                     "text-white",
-                    "border-[3px] border-white/20 dark:border-black/20",
-                    // Glass sheen on the button
-                    "shadow-[0_4px_24px_-4px_rgba(5,150,105,0.6),inset_0_1px_0_rgba(255,255,255,0.35)]",
-                    isActive && "ring-2 ring-primary/60 ring-offset-2 ring-offset-transparent"
+                    // Crisp light-mode and dark-mode border ring
+                    "border-[3px] border-white dark:border-slate-900",
+                    "shadow-[0_4px_18px_-2px_rgba(5,150,105,0.45),inset_0_1px_0_rgba(255,255,255,0.4)]",
+                    isActive && "ring-2 ring-emerald-500/80 ring-offset-2 ring-offset-transparent"
                   )}
                 >
-                  {/* Inner highlight arc */}
-                  <span className="absolute inset-x-2 top-1.5 h-3 rounded-full bg-white/20 blur-sm" />
-                  <Icon className="relative z-10 h-6 w-6 stroke-[2.2]" />
+                  {/* Sheen reflection highlight */}
+                  <span className="absolute inset-x-2 top-1 h-2.5 rounded-full bg-white/25 blur-[1px]" />
+                  <Icon className="relative z-10 h-5 w-5 stroke-[2.3]" />
                 </motion.div>
                 <span
                   className={cn(
-                    "mt-1 text-[10px] font-semibold tracking-tight transition-colors",
-                    isActive ? "text-primary" : "text-white/60 dark:text-white/50"
+                    "mt-0.5 text-[10px] tracking-tight transition-colors duration-150",
+                    isActive
+                      ? "font-bold text-emerald-600 dark:text-emerald-400"
+                      : "font-medium text-slate-600 dark:text-slate-400"
                   )}
                 >
                   {item.name}
@@ -103,57 +130,68 @@ export function MobileBottomNav() {
             );
           }
 
+          /* ── Standard Navigation Tabs ── */
           return (
             <Link
               key={item.href}
               href={item.href}
+              prefetch={true}
+              onPointerDown={() => {
+                setOptimisticHref(item.href);
+                router.prefetch(item.href);
+              }}
+              onTouchStart={() => {
+                setOptimisticHref(item.href);
+                router.prefetch(item.href);
+              }}
               className={cn(
                 "group relative flex flex-col items-center justify-center gap-0.5",
-                "min-h-[48px] min-w-[52px] rounded-2xl px-2 py-2",
-                "transition-colors duration-200",
-                isActive
-                  ? "text-primary"
-                  : "text-white/55 dark:text-white/40 hover:text-white/80"
+                "h-[48px] min-w-[54px] rounded-2xl px-2 py-1",
+                "transition-colors duration-150 focus:outline-none"
               )}
             >
-              {/* Active glass pill indicator */}
-              <AnimatePresence>
-                {isActive && (
-                  <motion.span
-                    layoutId="nav-active-pill"
-                    className={cn(
-                      "absolute inset-x-0.5 top-1 h-[34px] rounded-xl",
-                      "bg-white/15 dark:bg-white/10",
-                      "border border-white/20 dark:border-white/10",
-                      "shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]"
-                    )}
-                    initial={{ opacity: 0, scale: 0.85 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.85 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                  />
-                )}
-              </AnimatePresence>
+              {/* ── Redesigned Active Capsule (smoothly glides across tabs) ── */}
+              {isActive && (
+                <motion.div
+                  layoutId="nav-active-capsule"
+                  className={cn(
+                    "absolute inset-0 rounded-2xl",
+                    // Soft brand tint capsule wrapping icon and text
+                    "bg-emerald-500/12 dark:bg-emerald-400/15",
+                    "border border-emerald-500/25 dark:border-emerald-400/30",
+                    "shadow-[0_2px_12px_-2px_rgba(16,185,129,0.25)]"
+                  )}
+                  transition={{
+                    type: "spring",
+                    stiffness: 480,
+                    damping: 32,
+                  }}
+                />
+              )}
 
+              {/* Icon */}
               <motion.div
-                whileTap={{ scale: 0.85 }}
+                whileTap={{ scale: 0.88 }}
                 transition={{ type: "spring", stiffness: 500, damping: 25 }}
                 className="relative z-10"
               >
                 <Icon
                   className={cn(
-                    "h-[22px] w-[22px] transition-all duration-200",
+                    "h-5 w-5 transition-all duration-150",
                     isActive
-                      ? "stroke-[2.4] drop-shadow-[0_0_6px_rgba(16,185,129,0.5)]"
-                      : "stroke-[1.7] group-hover:scale-110"
+                      ? "stroke-[2.3] text-emerald-600 dark:text-emerald-400 scale-105 drop-shadow-[0_0_6px_rgba(16,185,129,0.4)]"
+                      : "stroke-[1.8] text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200"
                   )}
                 />
               </motion.div>
 
+              {/* Label */}
               <span
                 className={cn(
-                  "relative z-10 text-[10px] font-medium leading-none tracking-tight transition-all duration-200",
-                  isActive && "font-semibold"
+                  "relative z-10 text-[10px] leading-none tracking-tight transition-all duration-150",
+                  isActive
+                    ? "font-bold text-emerald-600 dark:text-emerald-400"
+                    : "font-medium text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300"
                 )}
               >
                 {item.name}
@@ -165,3 +203,4 @@ export function MobileBottomNav() {
     </nav>
   );
 }
+
