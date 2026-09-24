@@ -3,7 +3,11 @@ import { ThemeProvider } from "@/components/theme/theme-provider";
 import { ToastProvider } from "@/components/ui/toast";
 import { PwaRegistrar } from "@/components/pwa/pwa-registrar";
 import { AppSplashScreen } from "@/components/pwa/app-splash-screen";
+import { LiquidGlassInit } from "@/components/theme/liquid-glass-init";
 import "@/app/globals.css";
+
+// Inline sync script to prevent flash of liquid glass intensity before hydration
+const glassInitScript = `(function(){try{var v=localStorage.getItem("bookguard_glass_intensity");if(v!==null){var n=parseInt(v,10);if(!isNaN(n)&&n>=0&&n<=100){var l=(n/100).toFixed(2);var d=((n/100)*0.92).toFixed(2);var b=Math.round(8+((100-n)/100)*20)+"px";document.documentElement.style.setProperty("--liquid-glass-alpha-light",l);document.documentElement.style.setProperty("--liquid-glass-alpha-dark",d);document.documentElement.style.setProperty("--liquid-glass-blur",b);}}}catch(e){}})();`;
 
 export const metadata: Metadata = {
   applicationName: "BookGuard",
@@ -56,6 +60,7 @@ export default function RootLayout({
         suppressHydrationWarning
         className="min-h-screen bg-background font-sans antialiased selection:bg-primary/20 selection:text-primary"
       >
+        <script dangerouslySetInnerHTML={{ __html: glassInitScript }} />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -63,6 +68,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <ToastProvider>
+            <LiquidGlassInit />
             <AppSplashScreen />
             <PwaRegistrar />
             {children}

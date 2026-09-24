@@ -42,7 +42,7 @@ export default async function AppLayout({
         <MobileHeader userId={userId} />
 
         {/* Dynamic Page Content with smooth transition animation */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-bottom-nav md:pb-8 max-w-6xl w-full mx-auto">
+        <main className="flex-1 p-3.5 sm:p-6 lg:p-8 pb-bottom-nav md:pb-8 max-w-6xl w-full mx-auto">
           <PageTransition>
             {children}
           </PageTransition>

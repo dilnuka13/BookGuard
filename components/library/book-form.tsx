@@ -1015,52 +1015,6 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
         onClose={() => setIsRemoteScanModalOpen(false)}
         onBarcodeScanned={handleRemoteBarcodeScanned}
       />
-
-      {/* Mobile Floating Quick Save Dock (Docked right above MobileBottomNav) */}
-      <aside
-        aria-label="Mobile quick save"
-        className="fixed bottom-[74px] left-3 right-3 sm:max-w-lg sm:mx-auto z-30 md:hidden pointer-events-auto animate-in slide-in-from-bottom-4 duration-300"
-      >
-        <div className="flex items-center justify-between gap-3 p-2.5 rounded-2xl bg-card/95 backdrop-blur-xl border border-border shadow-[0_8px_32px_rgba(0,0,0,0.24)]">
-          <div className="min-w-0 flex-1 pl-1.5">
-            <div className="flex items-center gap-1.5">
-              <span
-                className={`w-2 h-2 rounded-full shrink-0 ${
-                  title.trim() ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/50"
-                }`}
-              />
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider truncate">
-                {title.trim() ? "Ready to Save" : "1 Required Field"}
-              </p>
-            </div>
-            <p className="text-xs font-bold text-foreground truncate mt-0.5">
-              {title.trim() || "Type Book Title to Save"}
-            </p>
-          </div>
-
-          <Button
-            type="button"
-            variant="brandGradient"
-            size="sm"
-            onClick={() => handleSubmit()}
-            disabled={isSubmitting}
-            className="h-10 px-4 text-xs font-bold rounded-xl shadow-lg gap-1.5 shrink-0"
-            title="Save book immediately with entered title"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Saving...</span>
-              </>
-            ) : (
-              <>
-                <Zap className="h-4 w-4 fill-current text-amber-300" />
-                <span>Quick Save</span>
-              </>
-            )}
-          </Button>
-        </div>
-      </aside>
     </form>
   );
 }

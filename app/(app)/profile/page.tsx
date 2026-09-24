@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { ProfileForm } from "@/components/profile/profile-form";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { LiquidGlassSlider } from "@/components/theme/liquid-glass-slider";
 import { DatabaseKeepAliveCard } from "@/components/profile/database-keep-alive-card";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { SignOutButton } from "@/components/auth/sign-out-button";
@@ -160,14 +161,22 @@ export default async function ProfilePage() {
             Choose between Light, Dark, or System mode to match your device.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold text-foreground">Interface Theme</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Customizes colors and contrast across all BookGuard views.
-            </p>
+        <CardContent className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Interface Theme</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Customizes colors and contrast across all BookGuard views.
+              </p>
+            </div>
+            <ThemeToggle variant="segmented" className="sm:w-72" />
           </div>
-          <ThemeToggle variant="segmented" className="sm:w-72" />
+
+          {/* Section Divider */}
+          <div className="h-px bg-border/60" />
+
+          {/* Liquid Glass Opacity & Blur Scroller */}
+          <LiquidGlassSlider />
         </CardContent>
       </Card>
 

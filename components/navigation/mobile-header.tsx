@@ -84,17 +84,17 @@ export function MobileHeader({ userId }: MobileHeaderProps) {
       className={cn(
         "sticky top-0 z-20 md:hidden",
         "flex items-center justify-between",
-        "px-4 h-[60px]",
+        "px-3.5",
         // Apple-grade adaptive liquid glass that auto-adjusts to iOS settings
         "liquid-glass border-b border-t-0 border-x-0 rounded-none shadow-sm"
       )}
       style={{
         paddingTop: "max(0px, env(safe-area-inset-top, 0px))",
-        height: "calc(60px + max(0px, env(safe-area-inset-top, 0px)))",
+        height: "calc(46px + max(0px, env(safe-area-inset-top, 0px)))",
       }}
     >
       {/* ── Left: Logo mark + dynamic page label ── */}
-      <div className="flex items-center gap-2.5 min-w-0">
+      <div className="flex items-center gap-2 min-w-0">
         <Link
           href="/"
           className="shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl"
@@ -103,12 +103,12 @@ export function MobileHeader({ userId }: MobileHeaderProps) {
           <BookGuardLogo
             variant="mark"
             withBackdropInDark={false}
-            imageClassName="h-8 w-8"
+            imageClassName="h-7 w-7"
           />
         </Link>
 
         {/* Divider */}
-        <span className="h-5 w-px bg-border/60 shrink-0" />
+        <span className="h-3.5 w-px bg-border/60 shrink-0" />
 
         {/* Animated page title */}
         <AnimatePresence mode="wait" initial={false}>
@@ -121,10 +121,10 @@ export function MobileHeader({ userId }: MobileHeaderProps) {
             className="flex items-center gap-1.5 min-w-0"
           >
             <PageIcon
-              className={cn("h-4 w-4 shrink-0", page.color)}
+              className={cn("h-3.5 w-3.5 shrink-0", page.color)}
               strokeWidth={2.2}
             />
-            <span className="text-sm font-semibold text-foreground truncate leading-none">
+            <span className="text-xs sm:text-sm font-semibold text-foreground truncate leading-none">
               {page.label}
             </span>
           </motion.div>
@@ -132,7 +132,7 @@ export function MobileHeader({ userId }: MobileHeaderProps) {
       </div>
 
       {/* ── Right: Actions ── */}
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-1.5 shrink-0">
         {/* Shield badge — subtle brand identity */}
         <div
           className={cn(
@@ -147,19 +147,29 @@ export function MobileHeader({ userId }: MobileHeaderProps) {
 
         <ThemeToggle
           variant="button"
-          className="h-8 w-8 rounded-xl bg-transparent hover:bg-white/10"
+          className="h-7 w-7 rounded-xl bg-transparent hover:bg-white/10"
         />
 
         <Link
           href="/profile"
-          className="flex items-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="group relative flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full aspect-square focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           aria-label="View profile"
         >
-          {/* Avatar with ring glow */}
-          <div className="relative">
-            <span className="absolute -inset-0.5 rounded-full bg-gradient-to-tr from-emerald-500/30 to-cyan-500/30 blur-sm" />
-            <div className="relative rounded-full ring-1 ring-white/20">
-              <UserAvatar userId={userId} size="sm" />
+          {/* Subtle ambient glow behind avatar */}
+          <span
+            className="absolute -inset-0.5 rounded-full aspect-square bg-gradient-to-tr from-emerald-500/40 via-teal-400/30 to-cyan-400/40 blur-[5px] opacity-75 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
+            aria-hidden="true"
+          />
+
+          {/* Glowing highlight frame ring */}
+          <div className="relative flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full aspect-square p-[2px] bg-gradient-to-tr from-emerald-400 via-teal-400 to-cyan-400 shadow-[0_2px_8px_rgba(16,185,129,0.35)] transition-transform duration-150 group-hover:scale-105 group-active:scale-95">
+            {/* Inner clip container guaranteeing perfect circle avatar */}
+            <div className="relative flex h-full w-full shrink-0 items-center justify-center overflow-hidden rounded-full aspect-square bg-background ring-1 ring-black/10 dark:ring-white/10">
+              <UserAvatar
+                userId={userId}
+                size="sm"
+                className="h-full w-full min-h-0 min-w-0 border-0 shadow-none aspect-square object-cover"
+              />
             </div>
           </div>
         </Link>

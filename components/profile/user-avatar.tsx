@@ -87,7 +87,7 @@ export function UserAvatar({
   return (
     <div
       className={cn(
-        "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-border shadow-sm select-none",
+        "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-border shadow-sm select-none aspect-square",
         sizeConfig.container,
         !hasImage &&
           "bg-gradient-to-tr from-emerald-600 via-teal-600 to-cyan-600 font-bold text-white",
@@ -100,7 +100,7 @@ export function UserAvatar({
           alt={name ? `${name}'s avatar` : "User avatar"}
           width={sizeConfig.px}
           height={sizeConfig.px}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-cover aspect-square rounded-full"
           onError={() => setImageError(true)}
           unoptimized={src.startsWith("blob:") || src.startsWith("data:")}
         />

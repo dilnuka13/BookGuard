@@ -49,19 +49,19 @@ export function MobileBottomNav() {
   return (
     <nav
       aria-label="Mobile navigation"
-      className="fixed bottom-0 left-0 right-0 z-40 md:hidden pointer-events-none"
+      className="fixed left-0 right-0 z-40 md:hidden pointer-events-none"
       style={{
-        // Lowered position closer to bottom edge, keeping safe room above the home bar
-        paddingBottom: "max(0.35rem, calc(0.12rem + env(safe-area-inset-bottom, 0px)))",
+        // Sits just slightly above the bottom edge / home indicator bar, without floating way too high
+        bottom: "max(8px, calc(env(safe-area-inset-bottom, 0px) * 0.28))",
       }}
     >
       {/* ─── Premium Glassmorphism Floating Pill ─── */}
       <div
         className={cn(
-          "pointer-events-auto mx-3 sm:mx-auto max-w-lg flex h-[60px] items-center justify-around",
-          "rounded-[28px] px-1.5",
+          "pointer-events-auto mx-3 sm:mx-auto max-w-lg flex h-[52px] items-center justify-around",
+          "rounded-[26px] px-1.5",
           // Apple-grade adaptive liquid glass that auto-adjusts to iOS settings
-          "liquid-glass"
+          "liquid-glass shadow-lg"
         )}
       >
         {NAV_ITEMS.map((item) => {
@@ -87,7 +87,7 @@ export function MobileBottomNav() {
                   setOptimisticHref(item.href);
                   router.prefetch(item.href);
                 }}
-                className="group relative -top-3.5 flex flex-col items-center focus:outline-none"
+                className="group relative -top-2 flex flex-col items-center focus:outline-none"
                 aria-label="Scan a book"
               >
                 {/* Outer glow ring */}
@@ -103,22 +103,22 @@ export function MobileBottomNav() {
                   whileHover={{ scale: 1.06 }}
                   transition={{ type: "spring", stiffness: 450, damping: 22 }}
                   className={cn(
-                    "relative flex h-[52px] w-[52px] items-center justify-center rounded-full",
+                    "relative flex h-[46px] w-[46px] items-center justify-center rounded-full",
                     "bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-400",
                     "text-white",
                     // Crisp light-mode and dark-mode border ring
-                    "border-[3px] border-white dark:border-slate-900",
-                    "shadow-[0_4px_18px_-2px_rgba(5,150,105,0.45),inset_0_1px_0_rgba(255,255,255,0.4)]",
+                    "border-2 border-white dark:border-slate-900",
+                    "shadow-[0_4px_16px_-2px_rgba(5,150,105,0.45),inset_0_1px_0_rgba(255,255,255,0.4)]",
                     isActive && "ring-2 ring-emerald-500/80 ring-offset-2 ring-offset-transparent"
                   )}
                 >
                   {/* Sheen reflection highlight */}
-                  <span className="absolute inset-x-2 top-1 h-2.5 rounded-full bg-white/25 blur-[1px]" />
-                  <Icon className="relative z-10 h-5 w-5 stroke-[2.3]" />
+                  <span className="absolute inset-x-2 top-0.5 h-2 rounded-full bg-white/25 blur-[1px]" />
+                  <Icon className="relative z-10 h-4.5 w-4.5 stroke-[2.3]" />
                 </motion.div>
                 <span
                   className={cn(
-                    "mt-0.5 text-[10px] tracking-tight transition-colors duration-150",
+                    "mt-0.5 text-[9.5px] tracking-tight transition-colors duration-150",
                     isActive
                       ? "font-bold text-emerald-600 dark:text-emerald-400"
                       : "font-medium text-slate-600 dark:text-slate-400"
@@ -146,7 +146,7 @@ export function MobileBottomNav() {
               }}
               className={cn(
                 "group relative flex flex-col items-center justify-center gap-0.5",
-                "h-[48px] min-w-[54px] rounded-2xl px-2 py-1",
+                "h-[42px] min-w-[48px] rounded-xl px-1.5 py-0.5",
                 "transition-colors duration-150 focus:outline-none"
               )}
             >
@@ -155,11 +155,11 @@ export function MobileBottomNav() {
                 <motion.div
                   layoutId="nav-active-capsule"
                   className={cn(
-                    "absolute inset-0 rounded-2xl",
+                    "absolute inset-0 rounded-xl",
                     // Soft brand tint capsule wrapping icon and text
                     "bg-emerald-500/12 dark:bg-emerald-400/15",
                     "border border-emerald-500/25 dark:border-emerald-400/30",
-                    "shadow-[0_2px_12px_-2px_rgba(16,185,129,0.25)]"
+                    "shadow-[0_2px_10px_-2px_rgba(16,185,129,0.25)]"
                   )}
                   transition={{
                     type: "spring",
@@ -177,7 +177,7 @@ export function MobileBottomNav() {
               >
                 <Icon
                   className={cn(
-                    "h-5 w-5 transition-all duration-150",
+                    "h-4.5 w-4.5 transition-all duration-150",
                     isActive
                       ? "stroke-[2.3] text-emerald-600 dark:text-emerald-400 scale-105 drop-shadow-[0_0_6px_rgba(16,185,129,0.4)]"
                       : "stroke-[1.8] text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200"
@@ -188,7 +188,7 @@ export function MobileBottomNav() {
               {/* Label */}
               <span
                 className={cn(
-                  "relative z-10 text-[10px] leading-none tracking-tight transition-all duration-150",
+                  "relative z-10 text-[9.5px] leading-none tracking-tight transition-all duration-150",
                   isActive
                     ? "font-bold text-emerald-600 dark:text-emerald-400"
                     : "font-medium text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300"
