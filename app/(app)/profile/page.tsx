@@ -179,7 +179,7 @@ export default async function ProfilePage() {
             <span>Account Session</span>
           </div>
           <CardTitle>Session Security</CardTitle>
-          <CardDescription>
+          <CardDescription suppressHydrationWarning>
             Signed in via Google OAuth. Member since {formattedJoinDate}.
           </CardDescription>
         </CardHeader>

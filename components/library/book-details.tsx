@@ -206,7 +206,7 @@ export function BookDetails({ book }: BookDetailsProps) {
                 </div>
                 <div>
                   <span className="text-muted-foreground block text-[10px]">Purchase Date</span>
-                  <span className="font-semibold text-foreground">{formattedPurchaseDate}</span>
+                  <span className="font-semibold text-foreground" suppressHydrationWarning>{formattedPurchaseDate}</span>
                 </div>
               </div>
             )}
@@ -243,7 +243,7 @@ export function BookDetails({ book }: BookDetailsProps) {
       <div className="flex flex-wrap items-center justify-between text-[11px] text-muted-foreground px-2">
         <div className="flex items-center gap-1">
           <Clock className="h-3 w-3" />
-          <span>Added to library on {formattedAddedDate}</span>
+          <span suppressHydrationWarning>Added to library on {formattedAddedDate}</span>
         </div>
         <span>UUID: <span className="font-mono text-[10px]">{book.id}</span></span>
       </div>

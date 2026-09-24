@@ -15,12 +15,7 @@ export interface NetworkState {
 }
 
 export function useNetworkStatus(): NetworkState {
-  const [isOnline, setIsOnline] = React.useState<boolean>(() => {
-    if (typeof window !== "undefined") {
-      return navigator.onLine;
-    }
-    return true;
-  });
+  const [isOnline, setIsOnline] = React.useState<boolean>(true);
 
   const [isSyncing, setIsSyncing] = React.useState<boolean>(false);
   const [lastSyncedAt, setLastSyncedAt] = React.useState<string | null>(null);
@@ -29,6 +24,9 @@ export function useNetworkStatus(): NetworkState {
 
   // Load existing metadata on mount
   React.useEffect(() => {
+    if (typeof navigator !== "undefined" && typeof navigator.onLine === "boolean") {
+      setIsOnline(navigator.onLine);
+    }
     getSyncMeta().then((meta) => {
       setLastSyncedAt(meta.lastSyncedAt);
       setCachedCount(meta.count);

@@ -134,7 +134,7 @@ export function RecentScans({ scans }: RecentScansProps) {
                   </span>
                   <div className="flex items-center justify-end gap-1 text-[10px] text-muted-foreground mt-0.5">
                     <Clock className="h-2.5 w-2.5" />
-                    <span>{formattedDate}</span>
+                    <span suppressHydrationWarning>{formattedDate}</span>
                   </div>
                 </div>
               </div>

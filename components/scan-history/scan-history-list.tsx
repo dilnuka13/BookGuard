@@ -207,7 +207,7 @@ export function ScanHistoryList({ initialScans, userId }: ScanHistoryListProps) 
 
                   <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground pt-0.5">
                     <Clock className="h-3 w-3" />
-                    <span>{formattedDate}</span>
+                    <span suppressHydrationWarning>{formattedDate}</span>
                   </div>
                 </div>
               </div>
