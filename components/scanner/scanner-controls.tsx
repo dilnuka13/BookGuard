@@ -1,13 +1,14 @@
 "use client";
 
-import * as React from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Barcode, Image as ImageIcon, Camera } from "lucide-react";
+import { Barcode, Image as ImageIcon, Camera, Plus, Smartphone } from "lucide-react";
 
 interface ScannerControlsProps {
   onOpenManualIsbn: () => void;
   onUploadImageClick: () => void;
   onCaptureFrame?: () => void;
+  onScanWithPhone?: () => void;
   disabled?: boolean;
 }
 
@@ -15,10 +16,25 @@ export function ScannerControls({
   onOpenManualIsbn,
   onUploadImageClick,
   onCaptureFrame,
+  onScanWithPhone,
   disabled = false,
 }: ScannerControlsProps) {
   return (
-    <div className="absolute bottom-6 left-0 right-0 z-20 flex items-center justify-center gap-3 px-4 pointer-events-auto">
+    <div className="absolute bottom-6 left-0 right-0 z-20 flex flex-wrap items-center justify-center gap-2.5 px-4 pointer-events-auto">
+      {/* Manual Add Direct Route */}
+      <Button
+        asChild
+        variant="ghost"
+        size="sm"
+        disabled={disabled}
+        className="rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur-md border border-white/15 px-3.5 h-11 text-xs font-semibold gap-1.5 shadow-lg transition-transform active:scale-95"
+      >
+        <Link href="/library/add">
+          <Plus className="h-4 w-4 text-emerald-400" />
+          <span>Manual Add</span>
+        </Link>
+      </Button>
+
       {/* ISBN Tracker & Inspector */}
       <Button
         type="button"
@@ -26,11 +42,27 @@ export function ScannerControls({
         size="sm"
         disabled={disabled}
         onClick={onOpenManualIsbn}
-        className="rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur-md border border-white/15 px-4 h-11 text-xs font-semibold gap-2 shadow-lg transition-transform active:scale-95"
+        className="rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur-md border border-white/15 px-3.5 h-11 text-xs font-semibold gap-1.5 shadow-lg transition-transform active:scale-95"
       >
         <Barcode className="h-4 w-4 text-emerald-400" />
         <span>ISBN Tracker</span>
       </Button>
+
+      {/* Wireless Phone Scanner */}
+      {onScanWithPhone && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={disabled}
+          onClick={onScanWithPhone}
+          className="rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur-md border border-white/15 px-3.5 h-11 text-xs font-semibold gap-1.5 shadow-lg transition-transform active:scale-95"
+          title="Use your phone camera as a barcode scanner"
+        >
+          <Smartphone className="h-4 w-4 text-emerald-400" />
+          <span>Scan with Phone</span>
+        </Button>
+      )}
 
       {/* Capture Cover / Frame Button */}
       {onCaptureFrame && (

@@ -431,6 +431,53 @@ export interface Database {
           }
         ];
       };
+      remote_scan_sessions: {
+        Row: {
+          id: string;
+          user_id: string;
+          session_token: string;
+          status: "waiting" | "connected" | "scanned" | "expired" | "closed";
+          scanned_value: string | null;
+          device_connected: boolean;
+          device_info: string | null;
+          expires_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          session_token: string;
+          status?: "waiting" | "connected" | "scanned" | "expired" | "closed";
+          scanned_value?: string | null;
+          device_connected?: boolean;
+          device_info?: string | null;
+          expires_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          session_token?: string;
+          status?: "waiting" | "connected" | "scanned" | "expired" | "closed";
+          scanned_value?: string | null;
+          device_connected?: boolean;
+          device_info?: string | null;
+          expires_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "remote_scan_sessions_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -449,6 +496,36 @@ export interface Database {
           purchase_history_id: string;
           is_existing_copy: boolean;
         };
+      };
+      get_remote_scan_session: {
+        Args: {
+          p_session_id: string;
+          p_token: string;
+        };
+        Returns: Json;
+      };
+      connect_remote_scan_session: {
+        Args: {
+          p_session_id: string;
+          p_token: string;
+          p_device_info?: string | null;
+        };
+        Returns: Json;
+      };
+      submit_remote_scan_barcode: {
+        Args: {
+          p_session_id: string;
+          p_token: string;
+          p_barcode: string;
+        };
+        Returns: Json;
+      };
+      disconnect_remote_scan_session: {
+        Args: {
+          p_session_id: string;
+          p_token: string;
+        };
+        Returns: Json;
       };
     };
     Enums: Record<string, never>;

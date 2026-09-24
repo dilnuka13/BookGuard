@@ -50,6 +50,7 @@ export interface LibraryFilters {
   author?: string;
   publishedYear?: number | null;
   search?: string;
+  isbnStatus?: "all" | "without-isbn" | "with-isbn";
 }
 
 export type LibraryViewMode = "grid" | "list";

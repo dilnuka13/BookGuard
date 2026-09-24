@@ -31,6 +31,7 @@ export function LibraryFiltersBar({
     filters.language,
     filters.author,
     filters.publishedYear,
+    filters.isbnStatus && filters.isbnStatus !== "all",
   ].filter(Boolean).length;
 
   const handleClear = () => {
@@ -40,6 +41,7 @@ export function LibraryFiltersBar({
       language: undefined,
       author: undefined,
       publishedYear: undefined,
+      isbnStatus: undefined,
     });
   };
 
@@ -176,6 +178,26 @@ export function LibraryFiltersBar({
               }
               className="h-10 min-h-[40px] text-xs"
             />
+          </div>
+
+          {/* ISBN Status Filter */}
+          <div className="space-y-1.5">
+            <Label className="text-[11px]">ISBN Status</Label>
+            <select
+              value={filters.isbnStatus || ""}
+              onChange={(e) =>
+                onChange({
+                  ...filters,
+                  isbnStatus:
+                    (e.target.value as "without-isbn" | "with-isbn") || undefined,
+                })
+              }
+              className="h-10 min-h-[40px] w-full rounded-xl border border-input bg-card px-3 text-xs text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="">All Books (Both With & Without ISBN)</option>
+              <option value="without-isbn">Without ISBN Only (No ISBN added)</option>
+              <option value="with-isbn">With ISBN Only</option>
+            </select>
           </div>
 
           <div className="pt-2">

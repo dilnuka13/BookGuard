@@ -5,6 +5,7 @@ import type {
   LibraryFilters,
   LibrarySortOption,
 } from "@/types/library";
+import { trackISBN } from "@/lib/isbn/tracker";
 
 export interface LibraryQueryParams {
   userId: string;
@@ -64,6 +65,12 @@ export async function getLibraryItems(
 
   if (filters.publishedYear) {
     query = query.eq("published_year", filters.publishedYear);
+  }
+
+  if (filters.isbnStatus === "without-isbn") {
+    query = query.is("isbn13", null).is("isbn10", null);
+  } else if (filters.isbnStatus === "with-isbn") {
+    query = query.or("isbn13.not.is.null,isbn10.not.is.null");
   }
 
   // 3. Sorting
@@ -213,11 +220,23 @@ export async function checkExactIsbnInLibrary(
   const clean = isbn.trim().replace(/[-\s._]/g, "").toUpperCase();
   if (!clean) return null;
 
+  // Cross-check counterpart format so ISBN-10 and ISBN-13 match the same book
+  const tracked = trackISBN(clean);
+  const conditions = [`isbn13.eq.${clean}`, `isbn10.eq.${clean}`, `barcode.eq.${clean}`];
+  if (tracked.isValid) {
+    if (tracked.isbn13 && tracked.isbn13 !== clean) {
+      conditions.push(`isbn13.eq.${tracked.isbn13}`);
+    }
+    if (tracked.isbn10 && tracked.isbn10 !== clean) {
+      conditions.push(`isbn10.eq.${tracked.isbn10}`);
+    }
+  }
+
   const { data, error } = await supabase
     .from("library_items")
     .select("*")
     .eq("user_id", userId)
-    .or(`isbn13.eq.${clean},isbn10.eq.${clean},barcode.eq.${clean}`)
+    .or(conditions.join(","))
     .maybeSingle();
 
   if (error) {
@@ -247,6 +266,46 @@ export async function getMatchCandidates(
     return [];
   }
 
-  return data || [];
+  const items = data || [];
+
+  // Auto-backfill existing books in background if they only have one ISBN format
+  if (items.length > 0) {
+    const needSync = items.filter((item) => {
+      const has13 = Boolean(item.isbn13 && item.isbn13.trim());
+      const has10 = Boolean(item.isbn10 && item.isbn10.trim());
+      return (has13 && !has10) || (has10 && !has13);
+    });
+
+    if (needSync.length > 0) {
+      setTimeout(async () => {
+        try {
+          for (const item of needSync) {
+            const tracked = trackISBN(item.isbn13 || item.isbn10 || "");
+            if (tracked.isValid) {
+              const updatePayload: { isbn13?: string; isbn10?: string } = {};
+              if (tracked.isbn13 && !item.isbn13) {
+                updatePayload.isbn13 = tracked.isbn13;
+                item.isbn13 = tracked.isbn13;
+              }
+              if (tracked.isbn10 && !item.isbn10) {
+                updatePayload.isbn10 = tracked.isbn10;
+                item.isbn10 = tracked.isbn10;
+              }
+              if (Object.keys(updatePayload).length > 0) {
+                await supabase
+                  .from("library_items")
+                  .update(updatePayload)
+                  .eq("id", item.id);
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("Background ISBN backfill warning:", e);
+        }
+      }, 200);
+    }
+  }
+
+  return items;
 }
 

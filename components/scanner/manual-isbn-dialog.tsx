@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { trackISBN, type ISBNTrackingAnalysis } from "@/lib/isbn/tracker";
-import { fetchBookMetadata } from "@/lib/isbn/lookup";
 import { checkOfflineIsbn } from "@/lib/offline/library-cache";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,9 +21,8 @@ import {
   ShieldCheck,
   ShieldAlert,
   Loader2,
+  Plus,
 } from "lucide-react";
-import Image from "next/image";
-import type { BookMetadata } from "@/lib/isbn/types";
 import type { OfflineLibraryItem } from "@/types/shopping";
 
 interface ManualIsbnDialogProps {
@@ -37,12 +36,11 @@ export function ManualIsbnDialog({
   onOpenChange,
   onSubmitIsbn,
 }: ManualIsbnDialogProps) {
+  const router = useRouter();
   const [inputVal, setInputVal] = React.useState("");
   const [copied, setCopied] = React.useState(false);
   const [shelfItem, setShelfItem] = React.useState<OfflineLibraryItem | null>(null);
   const [isCheckingShelf, setIsCheckingShelf] = React.useState(false);
-  const [previewMetadata, setPreviewMetadata] = React.useState<BookMetadata | null>(null);
-  const [isLookingUp, setIsLookingUp] = React.useState(false);
 
   const analysis: ISBNTrackingAnalysis | null = React.useMemo(() => {
     if (!inputVal.trim()) return null;
@@ -53,7 +51,6 @@ export function ManualIsbnDialog({
   React.useEffect(() => {
     if (!analysis?.isValid || !analysis.normalized) {
       setShelfItem(null);
-      setPreviewMetadata(null);
       return;
     }
 
@@ -76,28 +73,18 @@ export function ManualIsbnDialog({
     };
   }, [analysis?.isValid, analysis?.normalized]);
 
-  // Debounced metadata lookup for preview
-  React.useEffect(() => {
-    if (!analysis?.isValid || !analysis.normalized || shelfItem) {
-      return;
+  const handleAddManually = () => {
+    if (analysis?.isValid && analysis.normalized) {
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem(
+          "bookguard_scan_prefill",
+          JSON.stringify({ isbn: analysis.normalized })
+        );
+      }
+      onOpenChange(false);
+      router.push("/library/add?from_scan=1");
     }
-
-    let active = true;
-    const timer = setTimeout(() => {
-      setIsLookingUp(true);
-      fetchBookMetadata(analysis.normalized).then((meta) => {
-        if (active) {
-          setPreviewMetadata(meta);
-          setIsLookingUp(false);
-        }
-      });
-    }, 600);
-
-    return () => {
-      active = false;
-      clearTimeout(timer);
-    };
-  }, [analysis?.isValid, analysis?.normalized, shelfItem]);
+  };
 
   // Handle Escape key to close modal
   React.useEffect(() => {
@@ -264,41 +251,7 @@ export function ManualIsbnDialog({
                 )}
               </div>
 
-              {/* Row 3: Live Metadata Preview (if found online) */}
-              {previewMetadata && !shelfItem && (
-                <div className="flex gap-3 items-center rounded-xl bg-card border border-border/60 p-3">
-                  {previewMetadata.coverUrl ? (
-                    <div className="relative h-14 w-10 shrink-0 rounded-lg overflow-hidden border border-border shadow-sm">
-                      <Image
-                        src={previewMetadata.coverUrl}
-                        alt={previewMetadata.title}
-                        fill
-                        sizes="40px"
-                        className="object-cover"
-                      />
-                    </div>
-                  ) : (
-                    <div className="h-14 w-10 shrink-0 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
-                      <BookOpen className="h-5 w-5" />
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1 space-y-0.5">
-                    <p className="font-bold text-xs text-foreground truncate">
-                      {previewMetadata.title}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground truncate">
-                      {previewMetadata.authors.join(", ") || "Unknown Author"}
-                    </p>
-                    {previewMetadata.publisher && (
-                      <p className="text-[10px] text-muted-foreground/80 truncate">
-                        {previewMetadata.publisher} {previewMetadata.publishedYear ? `(${previewMetadata.publishedYear})` : ""}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Row 4: Format conversion & segments */}
+              {/* Row 3: Format conversion & segments */}
               <div className="flex items-center justify-between pt-1 border-t border-border/50 text-[11px] font-mono text-muted-foreground">
                 <span>Formatted: {analysis.formatted}</span>
                 {(analysis.isbn10 || analysis.isbn13) && (
@@ -324,6 +277,16 @@ export function ManualIsbnDialog({
               className="rounded-xl h-11"
             >
               Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={!analysis?.isValid}
+              onClick={handleAddManually}
+              className="rounded-xl h-11 gap-1.5 font-medium border border-border"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add Details Manually</span>
             </Button>
             <Button
               type="submit"

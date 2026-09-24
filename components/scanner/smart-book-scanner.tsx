@@ -11,7 +11,6 @@ import { ScanResultView } from "./scan-result";
 import { ManualIsbnDialog } from "./manual-isbn-dialog";
 import { CoverUploadFallback } from "./cover-upload-fallback";
 import { isBookBarcode, inspectISBN } from "@/lib/isbn/validate";
-import { fetchBookMetadata } from "@/lib/isbn/lookup";
 import { computeDHash } from "@/lib/image-hash/dhash";
 import { recognizeCoverText } from "@/lib/ocr/recognize";
 import { terminateOcrWorker } from "@/lib/ocr/worker";
@@ -25,8 +24,9 @@ import { triggerDynamicIsland } from "@/components/ui/dynamic-island-alert";
 import { addToCart, checkCartDuplicate } from "@/lib/cart/queries";
 import { addToWishlist, checkWishlistDuplicate } from "@/lib/wishlist/queries";
 import type { MatchCandidate, MatchResult } from "@/lib/matching/types";
-import { AlertCircle, BookOpen, Layers } from "lucide-react";
+import { AlertCircle, BookOpen, Layers, Smartphone, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { RemoteScanQRModal } from "@/components/remote-scan/remote-scan-qr-modal";
 import Link from "next/link";
 
 interface SmartBookScannerProps {
@@ -36,7 +36,6 @@ interface SmartBookScannerProps {
 type ScannerState =
   | "scanning"
   | "checking-library"
-  | "looking-up-metadata"
   | "processing-cover"
   | "result";
 
@@ -51,6 +50,7 @@ export function SmartBookScanner({ userId }: SmartBookScannerProps) {
   const [progressDetail, setProgressDetail] = React.useState<string | undefined>(undefined);
   const [matchResult, setMatchResult] = React.useState<MatchResult | null>(null);
   const [manualDialogOpen, setManualDialogOpen] = React.useState(false);
+  const [remoteScanModalOpen, setRemoteScanModalOpen] = React.useState(false);
 
   // User's library candidates cache
   const [candidates, setCandidates] = React.useState<MatchCandidate[]>([]);
@@ -187,7 +187,7 @@ export function SmartBookScanner({ userId }: SmartBookScannerProps) {
               authorScore: 0,
               editionConflict: false,
               reasons: [
-                "Offline Mode: Not found in your cached library. Online metadata lookup is unavailable without internet.",
+                "Offline Mode: Not found in your cached library. You can add it manually.",
               ],
             },
             scannedData: { isbn },
@@ -226,27 +226,24 @@ export function SmartBookScanner({ userId }: SmartBookScannerProps) {
           return;
         }
 
-        // STEP 2: Not in library by exact ISBN -> Fetch metadata from Open Library / Google Books
-        setScannerState("looking-up-metadata");
-        setProgressStatus("Looking up book details...");
-        setProgressDetail("Querying Open Library and Google Books databases");
-
-        const metadata = await fetchBookMetadata(isbn);
-
-        // STEP 3: Multi-signal smart match against user's library
-        const scannedInput: ScannedBookInput = {
-          isbn,
-          title: metadata?.title || null,
-          author: metadata?.authors ? metadata.authors.join(", ") : null,
-          publisher: metadata?.publisher || null,
-          edition: metadata?.edition || null,
-          publishedYear: metadata?.publishedYear || null,
-          coverUrl: metadata?.coverUrl || null,
+        // STEP 2: Not in library -> Instant NEW result for manual entry (no slow Google Books lookup)
+        const newResult: MatchResult = {
+          result: "NEW",
+          confidence: 1.0,
+          evidence: {
+            isbnExact: false,
+            titleScore: 0,
+            authorScore: 0,
+            editionConflict: false,
+            reasons: ["Barcode scanned. Not found in your personal library."],
+          },
+          scannedData: {
+            isbn,
+          },
         };
 
-        const result = matchBook(scannedInput, candidates);
-        deliverResult(result);
-        await recordScanHistory(supabase, userId, result);
+        deliverResult(newResult);
+        await recordScanHistory(supabase, userId, newResult);
       } catch (err) {
         console.error("Error during ISBN scan processing:", err);
         // Fallback to unknown result
@@ -265,7 +262,7 @@ export function SmartBookScanner({ userId }: SmartBookScannerProps) {
         deliverResult(fallbackResult);
       }
     },
-    [userId, candidates, deliverResult]
+    [userId, deliverResult]
   );
 
   // Handle barcode detected from CameraView
@@ -543,6 +540,27 @@ export function SmartBookScanner({ userId }: SmartBookScannerProps) {
       {/* Camera Live Feed Layer */}
       {scannerState === "scanning" && (
         <>
+          {/* Top Scanner Mode Switcher: Device Camera vs Scan With Phone */}
+          <div className="absolute top-4 left-4 z-20 pointer-events-auto">
+            <div className="inline-flex p-1 rounded-2xl bg-black/60 backdrop-blur-md border border-white/15 shadow-lg">
+              <button
+                type="button"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/20 text-white shadow-sm"
+              >
+                <Camera className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Device Camera</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRemoteScanModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-white/80 hover:text-white hover:bg-white/10 transition-all"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Scan with Phone</span>
+              </button>
+            </div>
+          </div>
+
           <CameraView
             isScanning={true}
             onBarcodeDetected={handleBarcodeDetected}
@@ -554,6 +572,7 @@ export function SmartBookScanner({ userId }: SmartBookScannerProps) {
           <ScannerControls
             onOpenManualIsbn={() => setManualDialogOpen(true)}
             onUploadImageClick={() => fileInputRef.current?.click()}
+            onScanWithPhone={() => setRemoteScanModalOpen(true)}
           />
         </>
       )}
@@ -588,6 +607,16 @@ export function SmartBookScanner({ userId }: SmartBookScannerProps) {
         open={manualDialogOpen}
         onOpenChange={setManualDialogOpen}
         onSubmitIsbn={processIsbn}
+      />
+
+      {/* Wireless Remote Phone Scanner Modal */}
+      <RemoteScanQRModal
+        isOpen={remoteScanModalOpen}
+        onClose={() => setRemoteScanModalOpen(false)}
+        onBarcodeScanned={(barcode) => {
+          setRemoteScanModalOpen(false);
+          processIsbn(barcode);
+        }}
       />
     </div>
   );

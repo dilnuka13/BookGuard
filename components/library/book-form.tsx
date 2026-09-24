@@ -12,12 +12,16 @@ import { generateBookCode } from "@/lib/books/book-code";
 import { validateCoverFile, compressCoverToWebP } from "@/lib/utils/image";
 import { uploadBookCover, deleteBookCover } from "@/lib/storage/book-cover";
 import { computeDHash } from "@/lib/image-hash/dhash";
+import { trackISBN } from "@/lib/isbn/tracker";
+import { checkExactIsbnInLibrary } from "@/lib/books/queries";
 import {
   PRESET_LANGUAGES,
   PRESET_CATEGORIES,
   type LibraryItem,
   type BookFormValues,
 } from "@/types/library";
+import Link from "next/link";
+import { RemoteScanQRModal } from "@/components/remote-scan/remote-scan-qr-modal";
 import {
   Camera,
   Upload,
@@ -28,6 +32,7 @@ import {
   Check,
   Loader2,
   BookOpen,
+  Smartphone,
 } from "lucide-react";
 
 interface BookFormProps {
@@ -84,7 +89,11 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
           if (data.title) setTitle(data.title);
           if (data.author) setAuthor(data.author);
           if (data.isbn) {
-            if (data.isbn.length === 13) setIsbn13(data.isbn);
+            const tracked = trackISBN(data.isbn);
+            if (tracked.isbn13) setIsbn13(tracked.isbn13);
+            else if (data.isbn.length === 13) setIsbn13(data.isbn);
+
+            if (tracked.isbn10) setIsbn10(tracked.isbn10);
             else if (data.isbn.length === 10) setIsbn10(data.isbn);
           }
           if (data.publisher) setPublisher(data.publisher);
@@ -106,6 +115,73 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
   const [titleError, setTitleError] = React.useState<string | null>(null);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  // Auto-sync between ISBN-13 and ISBN-10 to prevent duplicate formats
+  const handleIsbn13Change = (val: string) => {
+    setIsbn13(val);
+    const tracked = trackISBN(val);
+    if (tracked.isValid && tracked.isbn10 && (!isbn10 || isbn10.length === 10)) {
+      setIsbn10(tracked.isbn10);
+    }
+  };
+
+  const handleIsbn10Change = (val: string) => {
+    setIsbn10(val);
+    const tracked = trackISBN(val);
+    if (tracked.isValid && tracked.isbn13 && (!isbn13 || isbn13.length === 13)) {
+      setIsbn13(tracked.isbn13);
+    }
+  };
+
+  // Remote Phone Scanner States
+  const [isRemoteScanModalOpen, setIsRemoteScanModalOpen] = React.useState(false);
+  const [remoteScanSuccessMessage, setRemoteScanSuccessMessage] = React.useState<string | null>(null);
+  const [isbnDuplicateWarning, setIsbnDuplicateWarning] = React.useState<string | null>(null);
+  const [isbnHighlight, setIsbnHighlight] = React.useState(false);
+
+  // Handle scanned barcode coming wirelessly from remote phone
+  const handleRemoteBarcodeScanned = React.useCallback(async (barcode: string) => {
+    const tracked = trackISBN(barcode);
+    if (tracked.isbn13) {
+      setIsbn13(tracked.isbn13);
+      if (tracked.isbn10) setIsbn10(tracked.isbn10);
+    } else if (tracked.isbn10) {
+      setIsbn10(tracked.isbn10);
+      if (tracked.isbn13) setIsbn13(tracked.isbn13);
+    } else {
+      setIsbn13(barcode);
+    }
+
+    setIsbnHighlight(true);
+    setRemoteScanSuccessMessage(`✓ Auto-filled ISBN from phone: ${barcode}`);
+    setTimeout(() => {
+      setIsbnHighlight(false);
+    }, 3000);
+    setTimeout(() => {
+      setRemoteScanSuccessMessage(null);
+    }, 6000);
+
+    // Run existing duplicate check in user's library
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        const existing = await checkExactIsbnInLibrary(supabase, user.id, barcode);
+        if (existing) {
+          setIsbnDuplicateWarning(
+            `Notice: Book "${existing.title}" is already in your library with this ISBN (Code: ${existing.book_code}).`
+          );
+        } else {
+          setIsbnDuplicateWarning(null);
+        }
+      }
+    } catch (e) {
+      console.warn("Duplicate check error:", e);
+    }
+  }, []);
 
   // Handle Cover File Selection
   const handleCoverSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -163,9 +239,17 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
       parsedPrice = pr;
     }
 
-    // Normalize ISBNs
-    const norm13 = normalizeISBN(isbn13);
-    const norm10 = normalizeISBN(isbn10);
+    // Normalize and auto-sync ISBN-13 and ISBN-10
+    let final13 = normalizeISBN(isbn13).clean;
+    let final10 = normalizeISBN(isbn10).clean;
+
+    if (final13 && !final10) {
+      const tracked = trackISBN(final13);
+      if (tracked.isbn10) final10 = tracked.isbn10;
+    } else if (final10 && !final13) {
+      const tracked = trackISBN(final10);
+      if (tracked.isbn13) final13 = tracked.isbn13;
+    }
 
     const finalLanguage =
       language === "Other" && customLanguage.trim()
@@ -210,6 +294,19 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
       let finalStoragePath = initialBook?.cover_storage_path || null;
 
       if (mode === "add") {
+        // Prevent duplicate books from being saved under different ISBN formats
+        if (final13 || final10) {
+          const checkCode = final13 || final10 || "";
+          const existing = await checkExactIsbnInLibrary(supabase, user.id, checkCode);
+          if (existing) {
+            setFormError(
+              `This book is already in your library! "${existing.title}" is already registered (Book Code: ${existing.book_code}).`
+            );
+            setIsSubmitting(false);
+            return;
+          }
+        }
+
         const bookCode = generateBookCode();
 
         // 1. Insert book record
@@ -222,8 +319,8 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
             normalized_title: normalizedTitle,
             author: author.trim() || null,
             normalized_author: normalizedAuthor,
-            isbn13: norm13.clean || null,
-            isbn10: norm10.clean || null,
+            isbn13: final13 || null,
+            isbn10: final10 || null,
             publisher: publisher.trim() || null,
             edition: edition.trim() || null,
             published_year: parsedYear,
@@ -309,8 +406,8 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
             normalized_title: normalizedTitle,
             author: author.trim() || null,
             normalized_author: normalizedAuthor,
-            isbn13: norm13.clean || null,
-            isbn10: norm10.clean || null,
+            isbn13: final13 || null,
+            isbn10: final10 || null,
             publisher: publisher.trim() || null,
             edition: edition.trim() || null,
             published_year: parsedYear,
@@ -471,28 +568,91 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
           />
         </div>
 
-        {/* ISBN Fields (Optional) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="book-isbn13">ISBN-13 (Optional)</Label>
-            <Input
-              id="book-isbn13"
-              type="text"
-              placeholder="e.g. 9789552108174"
-              value={isbn13}
-              onChange={(e) => setIsbn13(e.target.value)}
-            />
+        {/* ISBN Section Header with Scanner Options */}
+        <div className="pt-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+            <div>
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                ISBN / Barcode
+              </Label>
+              <p className="text-[11px] text-muted-foreground">
+                Type manually or scan book barcode wirelessly
+              </p>
+            </div>
+
+            {/* Two Scanner Options as requested */}
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                asChild
+                className="h-8 text-xs gap-1.5 rounded-xl border-border hover:bg-muted"
+                title="Open local device camera scanner"
+              >
+                <Link href="/scan">
+                  <Camera className="w-3.5 h-3.5 text-primary" />
+                  <span>Use Device Camera</span>
+                </Link>
+              </Button>
+
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                onClick={() => setIsRemoteScanModalOpen(true)}
+                className="h-8 text-xs font-semibold gap-1.5 rounded-xl shadow-sm bg-primary text-primary-foreground hover:bg-primary/90"
+                title="Use your phone camera as a wireless scanner"
+              >
+                <Smartphone className="w-3.5 h-3.5" />
+                <span>Scan With Phone</span>
+              </Button>
+            </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="book-isbn10">ISBN-10 (Optional)</Label>
-            <Input
-              id="book-isbn10"
-              type="text"
-              placeholder="e.g. 9552108170"
-              value={isbn10}
-              onChange={(e) => setIsbn10(e.target.value)}
-            />
+          {/* Feedback alerts from phone scanning */}
+          {remoteScanSuccessMessage && (
+            <div className="mb-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-2 animate-in fade-in">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>{remoteScanSuccessMessage}</span>
+            </div>
+          )}
+
+          {isbnDuplicateWarning && (
+            <div className="mb-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs font-medium text-amber-700 dark:text-amber-300 flex items-center gap-2 animate-in fade-in">
+              <AlertCircle className="w-4 h-4 shrink-0 text-amber-500" />
+              <span>{isbnDuplicateWarning}</span>
+            </div>
+          )}
+
+          {/* ISBN Fields (Optional) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="book-isbn13">ISBN-13 (Optional)</Label>
+              <Input
+                id="book-isbn13"
+                type="text"
+                placeholder="e.g. 9789552108174"
+                value={isbn13}
+                onChange={(e) => handleIsbn13Change(e.target.value)}
+                className={`transition-all duration-300 ${
+                  isbnHighlight
+                    ? "ring-2 ring-emerald-500 border-emerald-500 bg-emerald-500/10 font-bold"
+                    : ""
+                }`}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="book-isbn10">ISBN-10 (Optional)</Label>
+              <Input
+                id="book-isbn10"
+                type="text"
+                placeholder="e.g. 9552108170"
+                value={isbn10}
+                onChange={(e) => handleIsbn10Change(e.target.value)}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -750,6 +910,13 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
           Cancel
         </Button>
       </div>
+
+      {/* Wireless Remote Phone Scanner Modal */}
+      <RemoteScanQRModal
+        isOpen={isRemoteScanModalOpen}
+        onClose={() => setIsRemoteScanModalOpen(false)}
+        onBarcodeScanned={handleRemoteBarcodeScanned}
+      />
     </form>
   );
 }

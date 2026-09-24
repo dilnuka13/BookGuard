@@ -60,17 +60,17 @@ export function NewBookResult({
           </span>
 
           <h3 className="text-base font-bold text-foreground leading-snug line-clamp-2">
-            {scannedBook.title || "Unidentified Title"}
+            {scannedBook.title || "New Book (Uncataloged)"}
           </h3>
 
           <p className="text-xs text-muted-foreground line-clamp-1">
-            {scannedBook.author || "Author not detected"}
+            {scannedBook.author || "Enter book details manually to add to shelf"}
           </p>
 
           <div className="pt-1 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
             {scannedBook.edition && <span>{scannedBook.edition}</span>}
             {scannedBook.publishedYear && <span>&bull; {scannedBook.publishedYear}</span>}
-            {scannedBook.isbn && <span className="font-mono">&bull; {scannedBook.isbn}</span>}
+            {scannedBook.isbn && <span className="font-mono font-medium text-foreground">&bull; ISBN: {scannedBook.isbn}</span>}
           </div>
         </div>
       </div>
@@ -86,7 +86,7 @@ export function NewBookResult({
             className="flex-1 gap-2"
           >
             <Plus className="h-4 w-4" />
-            <span>Add to Library</span>
+            <span>Add Details Manually</span>
           </Button>
 
           {onAddToCart && (

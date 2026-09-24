@@ -50,7 +50,9 @@ export async function updateSession(request: NextRequest) {
     pathname === "/offline" ||
     pathname.startsWith("/auth/callback") ||
     pathname.startsWith("/api/keep-alive") ||
-    pathname.startsWith("/api/books/lookup")
+    pathname.startsWith("/api/books/lookup") ||
+    pathname.startsWith("/remote-scan") ||
+    pathname.startsWith("/api/remote-scan")
   ) {
     return supabaseResponse;
   }

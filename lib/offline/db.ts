@@ -1,5 +1,6 @@
 import type { OfflineLibraryItem, QueuedMutation, MutationType, MutationStatus } from "@/types/shopping";
 import { normalizeBookTitle } from "@/lib/books/normalize";
+import { trackISBN } from "@/lib/isbn/tracker";
 
 const DB_NAME = "bookguard_offline_v1";
 const DB_VERSION = 2;
@@ -120,37 +121,42 @@ export async function findCachedBookByISBN(isbn: string): Promise<OfflineLibrary
   const clean = isbn.trim().replace(/[-\s._]/g, "").toUpperCase();
   if (!clean) return null;
 
+  const tracked = trackISBN(clean);
+  const target13 = tracked.isbn13 || (clean.length === 13 ? clean : null);
+  const target10 = tracked.isbn10 || (clean.length === 10 ? clean : null);
+
   try {
     const db = await openDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_LIBRARY, "readonly");
       const store = tx.objectStore(STORE_LIBRARY);
-
-      // Check ISBN-13 index
       const isbn13Index = store.index("isbn13");
-      const req13 = isbn13Index.get(clean);
+      const isbn10Index = store.index("isbn10");
 
-      req13.onsuccess = () => {
-        if (req13.result) {
-          resolve(req13.result);
+      const check13 = target13 ? isbn13Index.get(target13) : null;
+
+      const proceedToCheck10 = () => {
+        if (!target10) {
+          resolve(null);
           return;
         }
-
-        // Check ISBN-10 index
-        const isbn10Index = store.index("isbn10");
-        const req10 = isbn10Index.get(clean);
-
-        req10.onsuccess = () => {
-          if (req10.result) {
-            resolve(req10.result);
-            return;
-          }
-          resolve(null);
-        };
+        const req10 = isbn10Index.get(target10);
+        req10.onsuccess = () => resolve(req10.result || null);
         req10.onerror = () => reject(req10.error);
       };
 
-      req13.onerror = () => reject(req13.error);
+      if (check13) {
+        check13.onsuccess = () => {
+          if (check13.result) {
+            resolve(check13.result);
+          } else {
+            proceedToCheck10();
+          }
+        };
+        check13.onerror = () => reject(check13.error);
+      } else {
+        proceedToCheck10();
+      }
     });
   } catch {
     return null;

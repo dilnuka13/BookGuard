@@ -25,7 +25,9 @@ import {
   SearchX,
   Loader2,
   LibraryBig,
+  X,
 } from "lucide-react";
+import { cn } from "@/lib/utils/cn";
 
 interface LibraryViewProps {
   initialItems: LibraryItem[];
@@ -148,7 +150,8 @@ export function LibraryView({
     filters.category ||
     filters.language ||
     filters.author ||
-    filters.publishedYear
+    filters.publishedYear ||
+    filters.isbnStatus
   );
 
   return (
@@ -186,6 +189,30 @@ export function LibraryView({
               availableCategories={availableCategories}
               availableLanguages={availableLanguages}
             />
+
+            {/* Quick Toggle: Without ISBN */}
+            <Button
+              type="button"
+              variant={filters.isbnStatus === "without-isbn" ? "secondary" : "outline"}
+              size="sm"
+              onClick={() =>
+                setFilters({
+                  ...filters,
+                  isbnStatus: filters.isbnStatus === "without-isbn" ? undefined : "without-isbn",
+                })
+              }
+              className={cn(
+                "h-11 rounded-xl text-xs font-semibold gap-1.5 px-3 min-h-[44px]",
+                filters.isbnStatus === "without-isbn"
+                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <span>Without ISBN</span>
+              {filters.isbnStatus === "without-isbn" && (
+                <X className="h-3 w-3 ml-0.5" />
+              )}
+            </Button>
 
             <LibrarySort sort={sort} onChange={setSort} />
 
