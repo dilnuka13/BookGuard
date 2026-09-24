@@ -527,6 +527,12 @@ export interface Database {
         };
         Returns: Json;
       };
+      lookup_community_book_by_isbn: {
+        Args: {
+          p_isbn: string;
+        };
+        Returns: Json;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

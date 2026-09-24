@@ -27,6 +27,7 @@ import type { MatchCandidate, MatchResult } from "@/lib/matching/types";
 import { AlertCircle, BookOpen, Layers, Smartphone, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RemoteScanQRModal } from "@/components/remote-scan/remote-scan-qr-modal";
+import { lookupCommunityBook } from "@/lib/books/community-lookup";
 import Link from "next/link";
 
 interface SmartBookScannerProps {
@@ -226,7 +227,14 @@ export function SmartBookScanner({ userId }: SmartBookScannerProps) {
           return;
         }
 
-        // STEP 2: Not in library -> Instant NEW result for manual entry (no slow Google Books lookup)
+        // STEP 2: Not in personal library -> Check BookGuard Community Database for instant auto-fill
+        let communityMatch = null;
+        try {
+          communityMatch = await lookupCommunityBook(isbn);
+        } catch (commErr) {
+          console.warn("Community lookup skipped:", commErr);
+        }
+
         const newResult: MatchResult = {
           result: "NEW",
           confidence: 1.0,
@@ -235,11 +243,26 @@ export function SmartBookScanner({ userId }: SmartBookScannerProps) {
             titleScore: 0,
             authorScore: 0,
             editionConflict: false,
-            reasons: ["Barcode scanned. Not found in your personal library."],
+            reasons: communityMatch
+              ? [
+                  `Not in your shelf, but details found in BookGuard community: "${communityMatch.title}".`,
+                ]
+              : ["Barcode scanned. Not found in your personal library."],
           },
-          scannedData: {
-            isbn,
-          },
+          scannedData: communityMatch
+            ? {
+                isbn,
+                title: communityMatch.title,
+                author: communityMatch.author || undefined,
+                publisher: communityMatch.publisher || undefined,
+                edition: communityMatch.edition || undefined,
+                publishedYear: communityMatch.published_year || undefined,
+                coverUrl: communityMatch.cover_url || undefined,
+                coverHash: communityMatch.cover_hash || undefined,
+              }
+            : {
+                isbn,
+              },
         };
 
         deliverResult(newResult);

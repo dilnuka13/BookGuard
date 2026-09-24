@@ -22,6 +22,8 @@ import {
 } from "@/types/library";
 import Link from "next/link";
 import { RemoteScanQRModal } from "@/components/remote-scan/remote-scan-qr-modal";
+import { lookupCommunityBook } from "@/lib/books/community-lookup";
+import { triggerHaptic } from "@/lib/utils/haptics";
 import {
   Camera,
   Upload,
@@ -33,6 +35,7 @@ import {
   Loader2,
   BookOpen,
   Smartphone,
+  Zap,
 } from "lucide-react";
 
 interface BookFormProps {
@@ -79,6 +82,36 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
     initialBook?.cover_hash || null
   );
 
+  // Community Auto-fill state
+  const [communityNotice, setCommunityNotice] = React.useState<string | null>(null);
+
+  // Helper to query and auto-fill details from community library items
+  const tryCommunityAutofill = React.useCallback(async (candidateIsbn: string) => {
+    if (!candidateIsbn || !candidateIsbn.trim()) return;
+    try {
+      const comm = await lookupCommunityBook(candidateIsbn);
+      if (comm && comm.title) {
+        setTitle((prev) => (prev.trim() ? prev : comm.title));
+        if (comm.author) setAuthor((prev) => (prev.trim() ? prev : comm.author!));
+        if (comm.publisher) setPublisher((prev) => (prev.trim() ? prev : comm.publisher!));
+        if (comm.edition) setEdition((prev) => (prev.trim() ? prev : comm.edition!));
+        if (comm.published_year) setPublishedYear((prev) => (prev.trim() ? prev : String(comm.published_year)));
+        if (comm.language) setLanguage(comm.language);
+        if (comm.category) setCategory(comm.category);
+        if (comm.cover_url && !coverPreviewUrl) {
+          setCoverPreviewUrl(comm.cover_url);
+          if (comm.cover_hash) setPrefilledCoverHash(comm.cover_hash);
+        }
+
+        setCommunityNotice(`✨ Auto-filled from BookGuard Community: "${comm.title}"`);
+        triggerHaptic("success");
+        setTimeout(() => setCommunityNotice(null), 8000);
+      }
+    } catch (e) {
+      console.warn("Community auto-fill error:", e);
+    }
+  }, [coverPreviewUrl]);
+
   // Load prefill values from scanner if coming from a scan result
   React.useEffect(() => {
     if (typeof window !== "undefined" && mode === "add") {
@@ -95,6 +128,10 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
 
             if (tracked.isbn10) setIsbn10(tracked.isbn10);
             else if (data.isbn.length === 10) setIsbn10(data.isbn);
+
+            if (!data.title) {
+              tryCommunityAutofill(data.isbn);
+            }
           }
           if (data.publisher) setPublisher(data.publisher);
           if (data.edition) setEdition(data.edition);
@@ -109,7 +146,7 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
         }
       }
     }
-  }, [mode]);
+  }, [mode, tryCommunityAutofill]);
 
   // UI state
   const [titleError, setTitleError] = React.useState<string | null>(null);
@@ -123,6 +160,10 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
     if (tracked.isValid && tracked.isbn10 && (!isbn10 || isbn10.length === 10)) {
       setIsbn10(tracked.isbn10);
     }
+    const cleanDigits = val.replace(/[^0-9X]/gi, "");
+    if (cleanDigits.length === 13 && !title.trim()) {
+      tryCommunityAutofill(val);
+    }
   };
 
   const handleIsbn10Change = (val: string) => {
@@ -130,6 +171,10 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
     const tracked = trackISBN(val);
     if (tracked.isValid && tracked.isbn13 && (!isbn13 || isbn13.length === 13)) {
       setIsbn13(tracked.isbn13);
+    }
+    const cleanDigits = val.replace(/[^0-9X]/gi, "");
+    if (cleanDigits.length === 10 && !title.trim()) {
+      tryCommunityAutofill(val);
     }
   };
 
@@ -161,6 +206,11 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
       setRemoteScanSuccessMessage(null);
     }, 6000);
 
+    // Try community auto-fill if title is not yet entered
+    if (!title.trim()) {
+      tryCommunityAutofill(barcode);
+    }
+
     // Run existing duplicate check in user's library
     try {
       const supabase = createClient();
@@ -181,7 +231,7 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
     } catch (e) {
       console.warn("Duplicate check error:", e);
     }
-  }, []);
+  }, [title, tryCommunityAutofill]);
 
   // Handle Cover File Selection
   const handleCoverSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -206,14 +256,22 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
     setRemoveCoverFlag(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e && typeof e.preventDefault === "function") {
+      e.preventDefault();
+    }
     setFormError(null);
     setTitleError(null);
 
     const trimmedTitle = title.trim();
     if (!trimmedTitle) {
       setTitleError("Book title is required.");
+      triggerHaptic("warning");
+      const titleInput = document.getElementById("book-title");
+      if (titleInput) {
+        titleInput.scrollIntoView({ behavior: "smooth", block: "center" });
+        titleInput.focus();
+      }
       return;
     }
 
@@ -450,7 +508,7 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6 pb-24 md:pb-6">
       {/* Cover Uploader Section */}
       <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-sm">
         <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-3">
@@ -524,9 +582,49 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
 
       {/* Primary Information */}
       <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-sm space-y-4">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-primary">
-          Basic Details
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-primary">
+            Basic Details
+          </h3>
+          <Button
+            type="button"
+            variant="brandGradient"
+            size="sm"
+            onClick={() => handleSubmit()}
+            disabled={isSubmitting}
+            className="h-8 text-xs font-bold gap-1.5 px-3 rounded-xl shadow-sm"
+            title="Save book immediately with entered title"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              <>
+                <Zap className="h-3.5 w-3.5 fill-current text-amber-300" />
+                <span>Quick Save</span>
+              </>
+            )}
+          </Button>
+        </div>
+
+        {/* Community Auto-fill Success Notice */}
+        {communityNotice && (
+          <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-700 dark:text-amber-300 text-xs font-medium flex items-center justify-between gap-2 animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <span className="text-base leading-none">✨</span>
+              <span>{communityNotice}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCommunityNotice(null)}
+              className="text-muted-foreground hover:text-foreground p-1"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* Title (Required) */}
         <div className="space-y-1.5">
@@ -917,6 +1015,52 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
         onClose={() => setIsRemoteScanModalOpen(false)}
         onBarcodeScanned={handleRemoteBarcodeScanned}
       />
+
+      {/* Mobile Floating Quick Save Dock (Docked right above MobileBottomNav) */}
+      <aside
+        aria-label="Mobile quick save"
+        className="fixed bottom-[74px] left-3 right-3 sm:max-w-lg sm:mx-auto z-30 md:hidden pointer-events-auto animate-in slide-in-from-bottom-4 duration-300"
+      >
+        <div className="flex items-center justify-between gap-3 p-2.5 rounded-2xl bg-card/95 backdrop-blur-xl border border-border shadow-[0_8px_32px_rgba(0,0,0,0.24)]">
+          <div className="min-w-0 flex-1 pl-1.5">
+            <div className="flex items-center gap-1.5">
+              <span
+                className={`w-2 h-2 rounded-full shrink-0 ${
+                  title.trim() ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/50"
+                }`}
+              />
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider truncate">
+                {title.trim() ? "Ready to Save" : "1 Required Field"}
+              </p>
+            </div>
+            <p className="text-xs font-bold text-foreground truncate mt-0.5">
+              {title.trim() || "Type Book Title to Save"}
+            </p>
+          </div>
+
+          <Button
+            type="button"
+            variant="brandGradient"
+            size="sm"
+            onClick={() => handleSubmit()}
+            disabled={isSubmitting}
+            className="h-10 px-4 text-xs font-bold rounded-xl shadow-lg gap-1.5 shrink-0"
+            title="Save book immediately with entered title"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              <>
+                <Zap className="h-4 w-4 fill-current text-amber-300" />
+                <span>Quick Save</span>
+              </>
+            )}
+          </Button>
+        </div>
+      </aside>
     </form>
   );
 }

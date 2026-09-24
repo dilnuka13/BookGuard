@@ -55,9 +55,16 @@ export function NewBookResult({
         </div>
 
         <div className="space-y-1.5 flex-1 min-w-0">
-          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-            New Title
-          </span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+              New Title
+            </span>
+            {scannedBook.title && (
+              <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                ✨ Community Details
+              </span>
+            )}
+          </div>
 
           <h3 className="text-base font-bold text-foreground leading-snug line-clamp-2">
             {scannedBook.title || "New Book (Uncataloged)"}
@@ -86,7 +93,7 @@ export function NewBookResult({
             className="flex-1 gap-2"
           >
             <Plus className="h-4 w-4" />
-            <span>Add Details Manually</span>
+            <span>{scannedBook.title ? "Add Book to Library" : "Add Details Manually"}</span>
           </Button>
 
           {onAddToCart && (
