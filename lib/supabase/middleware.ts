@@ -51,6 +51,7 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/auth/callback") ||
     pathname.startsWith("/api/keep-alive") ||
     pathname.startsWith("/api/books/") ||
+    pathname.startsWith("/api/authors") ||
     pathname.startsWith("/remote-scan") ||
     pathname.startsWith("/api/remote-scan")
   ) {

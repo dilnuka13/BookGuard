@@ -222,7 +222,12 @@ export async function checkExactIsbnInLibrary(
 
   // Cross-check counterpart format so ISBN-10 and ISBN-13 match the same book
   const tracked = trackISBN(clean);
-  const conditions = [`isbn13.eq.${clean}`, `isbn10.eq.${clean}`, `barcode.eq.${clean}`];
+  const conditions = [
+    `isbn13.eq.${clean}`,
+    `isbn10.eq.${clean}`,
+    `barcode.eq.${clean}`,
+    `book_code.eq.${clean}`,
+  ];
   if (tracked.isValid) {
     if (tracked.isbn13 && tracked.isbn13 !== clean) {
       conditions.push(`isbn13.eq.${tracked.isbn13}`);

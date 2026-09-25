@@ -28,11 +28,18 @@ import {
   CheckCircle2,
   BookOpen,
 } from "lucide-react";
+import { AuthorAutocomplete } from "@/components/library/author-autocomplete";
+import { QuickScanModal } from "@/components/scanner/quick-scan-modal";
+import { lookupCommunityBook } from "@/lib/books/community-lookup";
+import { triggerHaptic } from "@/lib/utils/haptics";
 
 export function BulkAddForm() {
   const router = useRouter();
   const titleInputRef = React.useRef<HTMLInputElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Quick Camera Scanner State
+  const [isQuickScanModalOpen, setIsQuickScanModalOpen] = React.useState(false);
 
   // Session Stats
   const [sessionCount, setSessionCount] = React.useState(0);
@@ -64,6 +71,62 @@ export function BulkAddForm() {
   React.useEffect(() => {
     titleInputRef.current?.focus();
   }, []);
+
+  // Handle barcode scanned from quick camera or physical hardware scanner
+  const handleBarcodeScanned = React.useCallback(
+    async (barcode: string) => {
+      const clean = barcode.trim();
+      if (!clean) return;
+
+      setIsbn(clean);
+      triggerHaptic("success");
+
+      // Auto-fill metadata from community if available and title not entered
+      try {
+        const comm = await lookupCommunityBook(clean);
+        if (comm && comm.title) {
+          setTitle((prev) => (prev.trim() ? prev : comm.title));
+          if (comm.author) setAuthor((prev) => (prev.trim() ? prev : comm.author!));
+          if (comm.publisher) setPublisher((prev) => (prev.trim() ? prev : comm.publisher!));
+          if (comm.published_year) setPublishedYear((prev) => (prev.trim() ? prev : String(comm.published_year)));
+          if (comm.language) setLanguage(comm.language);
+          if (comm.category) setCategory(comm.category);
+          if (comm.cover_url && !coverPreviewUrl) {
+            setCoverPreviewUrl(comm.cover_url);
+          }
+        }
+      } catch (e) {
+        console.warn("Community lookup in bulk add warning:", e);
+      }
+    },
+    [coverPreviewUrl]
+  );
+
+  // Hardware USB/Bluetooth laser scanner listener for bulk adding
+  React.useEffect(() => {
+    let buffer = "";
+    let lastKeyTime = Date.now();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const currentTime = Date.now();
+      const isChar = e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey;
+
+      if (isChar) {
+        if (currentTime - lastKeyTime > 55) {
+          buffer = "";
+        }
+        buffer += e.key;
+        lastKeyTime = currentTime;
+      } else if (e.key === "Enter" && buffer.length >= 8 && currentTime - lastKeyTime < 55) {
+        e.preventDefault();
+        handleBarcodeScanned(buffer);
+        buffer = "";
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleBarcodeScanned]);
 
   const handleCoverSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -376,29 +439,44 @@ export function BulkAddForm() {
 
           {/* Author */}
           <div className="space-y-1.5">
-            <Label htmlFor="bulk-author" className="text-xs">
-              Author
-            </Label>
-            <Input
+            <div className="flex items-center justify-between">
+              <Label htmlFor="bulk-author" className="text-xs">
+                Author
+              </Label>
+              <span className="text-[10px] text-muted-foreground">Select existing or type new</span>
+            </div>
+            <AuthorAutocomplete
               id="bulk-author"
-              type="text"
-              placeholder="e.g. Martin Wickramasinghe"
               value={author}
-              onChange={(e) => setAuthor(e.target.value)}
+              onChange={setAuthor}
+              placeholder="e.g. Martin Wickramasinghe or මාර්ටින් වික්‍රමසිංහ"
+              className="h-10 text-xs"
             />
           </div>
 
           {/* ISBN (Optional) */}
           <div className="space-y-1.5">
-            <Label htmlFor="bulk-isbn" className="text-xs">
-              ISBN (Optional)
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="bulk-isbn" className="text-xs">
+                ISBN / Barcode (Optional)
+              </Label>
+              <button
+                type="button"
+                onClick={() => setIsQuickScanModalOpen(true)}
+                className="text-[11px] font-semibold text-primary hover:underline flex items-center gap-1"
+                title="Open camera barcode scanner"
+              >
+                <Camera className="h-3.5 w-3.5" />
+                <span>Scan Barcode</span>
+              </button>
+            </div>
             <Input
               id="bulk-isbn"
               type="text"
-              placeholder="e.g. 9789552108174 or leave empty"
+              placeholder="e.g. 9789552108174 or scan barcode"
               value={isbn}
               onChange={(e) => setIsbn(e.target.value)}
+              className="h-10 text-xs"
             />
           </div>
 
@@ -569,6 +647,15 @@ export function BulkAddForm() {
           </div>
         </div>
       )}
+
+      {/* Quick Camera Barcode Scanner Modal */}
+      <QuickScanModal
+        isOpen={isQuickScanModalOpen}
+        onClose={() => setIsQuickScanModalOpen(false)}
+        onBarcodeDetected={handleBarcodeScanned}
+        title="Quick Barcode Scanner"
+        description="Scan any book barcode to auto-fill ISBN and title details"
+      />
     </div>
   );
 }

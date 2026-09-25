@@ -20,6 +20,7 @@ import { recordScanHistory } from "@/lib/scanner/history";
 import { checkOfflineIsbn } from "@/lib/offline/library-cache";
 import { enqueueMutation } from "@/lib/offline/db";
 import { triggerHaptic } from "@/lib/utils/haptics";
+import { playBarcodeBeep, playDuplicateAlertBeep } from "@/lib/scanner/feedback";
 import { triggerDynamicIsland } from "@/components/ui/dynamic-island-alert";
 import { addToCart, checkCartDuplicate } from "@/lib/cart/queries";
 import { addToWishlist, checkWishlistDuplicate } from "@/lib/wishlist/queries";
@@ -76,6 +77,7 @@ export function SmartBookScanner({ userId }: SmartBookScannerProps) {
     const coverUrl = result.matchedBook?.cover_url || result.scannedData.coverUrl || null;
 
     if (result.result === "OWNED") {
+      playDuplicateAlertBeep();
       triggerDynamicIsland({
         type: "OWNED",
         title: bookTitle,
@@ -84,6 +86,7 @@ export function SmartBookScanner({ userId }: SmartBookScannerProps) {
         isbn: result.scannedData.isbn,
       });
     } else if (result.result === "POSSIBLE_DUPLICATE") {
+      playDuplicateAlertBeep();
       triggerDynamicIsland({
         type: "POSSIBLE_DUPLICATE",
         title: bookTitle,
@@ -92,6 +95,7 @@ export function SmartBookScanner({ userId }: SmartBookScannerProps) {
         isbn: result.scannedData.isbn,
       });
     } else if (result.result === "NEW") {
+      playBarcodeBeep();
       triggerDynamicIsland({
         type: "NEW",
         title: bookTitle,
@@ -293,28 +297,36 @@ export function SmartBookScanner({ userId }: SmartBookScannerProps) {
     (rawBarcode: string) => {
       if (scannerState !== "scanning") return;
 
+      const cleanCode = rawBarcode.trim();
+      if (!cleanCode) return;
+
       const now = Date.now();
       if (
         lastProcessedBarcodeRef.current &&
-        lastProcessedBarcodeRef.current.barcode === rawBarcode &&
+        lastProcessedBarcodeRef.current.barcode === cleanCode &&
         now - lastProcessedBarcodeRef.current.time < 3000
       ) {
         return; // Debounce duplicate triggers
       }
 
-      lastProcessedBarcodeRef.current = { barcode: rawBarcode, time: now };
+      lastProcessedBarcodeRef.current = { barcode: cleanCode, time: now };
 
-      // Validate if it's a book barcode (EAN-13 starting with 978 or 979)
-      if (isBookBarcode(rawBarcode)) {
-        processIsbn(rawBarcode);
+      // Case A: Book barcode (EAN-13 starting with 978 or 979)
+      if (isBookBarcode(cleanCode)) {
+        processIsbn(cleanCode);
         return;
       }
 
-      // If it's another 10/13 digit number, inspect
-      const inspection = inspectISBN(rawBarcode);
+      // Case B: Valid 10/13 digit ISBN
+      const inspection = inspectISBN(cleanCode);
       if (inspection.isValid) {
         processIsbn(inspection.normalized);
+        return;
       }
+
+      // Case C: Non-ISBN barcode (Code-128, store sticker, UPC, BookGuard code, etc.)
+      // Checks shelf library, community database, or delivers new uncataloged barcode
+      processIsbn(cleanCode);
     },
     [scannerState, processIsbn]
   );

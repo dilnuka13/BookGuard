@@ -22,6 +22,8 @@ import {
 } from "@/types/library";
 import Link from "next/link";
 import { RemoteScanQRModal } from "@/components/remote-scan/remote-scan-qr-modal";
+import { QuickScanModal } from "@/components/scanner/quick-scan-modal";
+import { AuthorAutocomplete } from "@/components/library/author-autocomplete";
 import { lookupCommunityBook } from "@/lib/books/community-lookup";
 import { triggerHaptic } from "@/lib/utils/haptics";
 import {
@@ -178,15 +180,19 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
     }
   };
 
-  // Remote Phone Scanner States
+  // Quick Camera Scanner and Remote Phone Scanner States
+  const [isQuickScanModalOpen, setIsQuickScanModalOpen] = React.useState(false);
   const [isRemoteScanModalOpen, setIsRemoteScanModalOpen] = React.useState(false);
   const [remoteScanSuccessMessage, setRemoteScanSuccessMessage] = React.useState<string | null>(null);
   const [isbnDuplicateWarning, setIsbnDuplicateWarning] = React.useState<string | null>(null);
   const [isbnHighlight, setIsbnHighlight] = React.useState(false);
 
-  // Handle scanned barcode coming wirelessly from remote phone
-  const handleRemoteBarcodeScanned = React.useCallback(async (barcode: string) => {
-    const tracked = trackISBN(barcode);
+  // Handle scanned barcode coming from quick camera, phone, or hardware scanner
+  const handleBarcodeScanned = React.useCallback(async (barcode: string) => {
+    const clean = barcode.trim();
+    if (!clean) return;
+
+    const tracked = trackISBN(clean);
     if (tracked.isbn13) {
       setIsbn13(tracked.isbn13);
       if (tracked.isbn10) setIsbn10(tracked.isbn10);
@@ -194,11 +200,12 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
       setIsbn10(tracked.isbn10);
       if (tracked.isbn13) setIsbn13(tracked.isbn13);
     } else {
-      setIsbn13(barcode);
+      setIsbn13(clean);
     }
 
     setIsbnHighlight(true);
-    setRemoteScanSuccessMessage(`✓ Auto-filled ISBN from phone: ${barcode}`);
+    setRemoteScanSuccessMessage(`✓ Auto-filled ISBN: ${clean}`);
+    triggerHaptic("success");
     setTimeout(() => {
       setIsbnHighlight(false);
     }, 3000);
@@ -208,7 +215,7 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
 
     // Try community auto-fill if title is not yet entered
     if (!title.trim()) {
-      tryCommunityAutofill(barcode);
+      tryCommunityAutofill(clean);
     }
 
     // Run existing duplicate check in user's library
@@ -219,7 +226,7 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
       } = await supabase.auth.getUser();
 
       if (user) {
-        const existing = await checkExactIsbnInLibrary(supabase, user.id, barcode);
+        const existing = await checkExactIsbnInLibrary(supabase, user.id, clean);
         if (existing) {
           setIsbnDuplicateWarning(
             `Notice: Book "${existing.title}" is already in your library with this ISBN (Code: ${existing.book_code}).`
@@ -232,6 +239,35 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
       console.warn("Duplicate check error:", e);
     }
   }, [title, tryCommunityAutofill]);
+
+  const handleRemoteBarcodeScanned = handleBarcodeScanned;
+
+  // Hardware USB/Bluetooth barcode scanner auto-detector
+  React.useEffect(() => {
+    let buffer = "";
+    let lastKeyTime = Date.now();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const currentTime = Date.now();
+      const isChar = e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey;
+
+      if (isChar) {
+        if (currentTime - lastKeyTime > 55) {
+          buffer = "";
+        }
+        buffer += e.key;
+        lastKeyTime = currentTime;
+      } else if (e.key === "Enter" && buffer.length >= 8 && currentTime - lastKeyTime < 55) {
+        // Physical scanner bursts digits followed by Enter in < 55ms
+        e.preventDefault();
+        handleBarcodeScanned(buffer);
+        buffer = "";
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleBarcodeScanned]);
 
   // Handle Cover File Selection
   const handleCoverSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -656,13 +692,15 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
 
         {/* Author */}
         <div className="space-y-1.5">
-          <Label htmlFor="book-author">Author / Writer</Label>
-          <Input
+          <div className="flex items-center justify-between">
+            <Label htmlFor="book-author">Author / Writer</Label>
+            <span className="text-[11px] text-muted-foreground">Select existing or type new</span>
+          </div>
+          <AuthorAutocomplete
             id="book-author"
-            type="text"
-            placeholder="e.g. Martin Wickramasinghe"
             value={author}
-            onChange={(e) => setAuthor(e.target.value)}
+            onChange={setAuthor}
+            placeholder="e.g. Martin Wickramasinghe or මාර්ටින් වික්‍රමසිංහ"
           />
         </div>
 
@@ -674,24 +712,22 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
                 ISBN / Barcode
               </Label>
               <p className="text-[11px] text-muted-foreground">
-                Type manually or scan book barcode wirelessly
+                Type manually, scan with camera, or scan wirelessly via phone
               </p>
             </div>
 
-            {/* Two Scanner Options as requested */}
+            {/* Scanner Options */}
             <div className="flex items-center gap-2">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                asChild
-                className="h-8 text-xs gap-1.5 rounded-xl border-border hover:bg-muted"
-                title="Open local device camera scanner"
+                onClick={() => setIsQuickScanModalOpen(true)}
+                className="h-8 text-xs gap-1.5 rounded-xl border-border hover:bg-muted font-medium text-foreground"
+                title="Open camera barcode scanner directly here"
               >
-                <Link href="/scan">
-                  <Camera className="w-3.5 h-3.5 text-primary" />
-                  <span>Use Device Camera</span>
-                </Link>
+                <Camera className="w-3.5 h-3.5 text-primary" />
+                <span>Quick Scan Camera</span>
               </Button>
 
               <Button
@@ -1014,6 +1050,15 @@ export function BookForm({ mode, initialBook, onSuccess }: BookFormProps) {
         isOpen={isRemoteScanModalOpen}
         onClose={() => setIsRemoteScanModalOpen(false)}
         onBarcodeScanned={handleRemoteBarcodeScanned}
+      />
+
+      {/* Instant Inline Camera Barcode Scanner */}
+      <QuickScanModal
+        isOpen={isQuickScanModalOpen}
+        onClose={() => setIsQuickScanModalOpen(false)}
+        onBarcodeDetected={handleBarcodeScanned}
+        title="Quick Book Barcode Scanner"
+        description="Scan any book barcode or ISBN to auto-fill details"
       />
     </form>
   );

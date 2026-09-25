@@ -20,9 +20,22 @@ import {
 
 export default async function DashboardPage() {
   const headersList = await headers();
-  const userId = headersList.get("x-bookguard-user-id") ?? "";
+  let userId = headersList.get("x-bookguard-user-id") ?? "";
 
   const supabase = await createClient();
+
+  if (!userId) {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        userId = user.id;
+      }
+    } catch {
+      // Fallback
+    }
+  }
 
   const [
     profileRes,
@@ -33,27 +46,37 @@ export default async function DashboardPage() {
     recentBooks,
     recentScans,
   ] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("full_name")
-      .eq("id", userId)
-      .maybeSingle(),
-    supabase
-      .from("library_items")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId),
-    supabase
-      .from("wishlist_items")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId),
-    supabase
-      .from("cart_items")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId),
-    supabase
-      .from("purchase_history")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId),
+    userId
+      ? supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", userId)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    userId
+      ? supabase
+          .from("library_items")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", userId)
+      : Promise.resolve({ count: 0 }),
+    userId
+      ? supabase
+          .from("wishlist_items")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", userId)
+      : Promise.resolve({ count: 0 }),
+    userId
+      ? supabase
+          .from("cart_items")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", userId)
+      : Promise.resolve({ count: 0 }),
+    userId
+      ? supabase
+          .from("purchase_history")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", userId)
+      : Promise.resolve({ count: 0 }),
     userId ? getRecentlyAddedBooks(supabase, userId, 6) : Promise.resolve([]),
     userId ? getRecentScans(supabase, userId, 5) : Promise.resolve([]),
   ]);

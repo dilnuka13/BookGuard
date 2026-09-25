@@ -77,7 +77,11 @@ export function NewBookResult({
           <div className="pt-1 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
             {scannedBook.edition && <span>{scannedBook.edition}</span>}
             {scannedBook.publishedYear && <span>&bull; {scannedBook.publishedYear}</span>}
-            {scannedBook.isbn && <span className="font-mono font-medium text-foreground">&bull; ISBN: {scannedBook.isbn}</span>}
+            {scannedBook.isbn && (
+              <span className="font-mono font-medium text-foreground">
+                &bull; {scannedBook.isbn.length === 10 || scannedBook.isbn.length === 13 ? "ISBN" : "Barcode"}: {scannedBook.isbn}
+              </span>
+            )}
           </div>
         </div>
       </div>

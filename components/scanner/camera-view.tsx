@@ -2,8 +2,24 @@
 
 import * as React from "react";
 import type { IScannerControls } from "@zxing/browser";
-import { Camera, AlertCircle, RefreshCw, Zap, ZapOff, FlipHorizontal } from "lucide-react";
+import {
+  Camera,
+  AlertCircle,
+  RefreshCw,
+  Zap,
+  ZapOff,
+  FlipHorizontal,
+  Volume2,
+  VolumeX,
+  ZoomIn,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  playBarcodeBeep,
+  triggerScanHaptic,
+  isScannerSoundEnabled,
+  setScannerSoundEnabled,
+} from "@/lib/scanner/feedback";
 
 interface CameraViewProps {
   onBarcodeDetected: (barcode: string) => void;
@@ -23,6 +39,7 @@ export function CameraView({
   const streamRef = React.useRef<MediaStream | null>(null);
   const zxingControlsRef = React.useRef<IScannerControls | null>(null);
   const animationFrameIdRef = React.useRef<number | null>(null);
+  const lastScanTimestampRef = React.useRef<number>(0);
 
   const [hasPermission, setHasPermission] = React.useState<boolean | null>(null);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
@@ -30,6 +47,31 @@ export function CameraView({
   const [currentDeviceId, setCurrentDeviceId] = React.useState<string | undefined>(undefined);
   const [torchAvailable, setTorchAvailable] = React.useState(false);
   const [isTorchOn, setIsTorchOn] = React.useState(false);
+
+  // Zoom controls
+  const [zoomSupported, setZoomSupported] = React.useState(false);
+  const [currentZoom, setCurrentZoom] = React.useState<number>(1);
+  const [maxZoom, setMaxZoom] = React.useState<number>(1);
+
+  // Sound toggle
+  const [isSoundOn, setIsSoundOn] = React.useState(true);
+
+  // Visual success flash on scan
+  const [scanFlash, setScanFlash] = React.useState(false);
+
+  // Sync sound preference on mount
+  React.useEffect(() => {
+    setIsSoundOn(isScannerSoundEnabled());
+  }, []);
+
+  const handleToggleSound = () => {
+    const next = !isSoundOn;
+    setIsSoundOn(next);
+    setScannerSoundEnabled(next);
+    if (next) {
+      playBarcodeBeep();
+    }
+  };
 
   // Stop camera tracks cleanly
   const stopTracks = React.useCallback(() => {
@@ -77,10 +119,14 @@ export function CameraView({
     }
 
     try {
-      // Find back/environment camera by default
+      // Find back/environment camera by default with optimal scanner settings
       const constraints: MediaStreamConstraints = {
         video: deviceId
-          ? { deviceId: { exact: deviceId } }
+          ? {
+              deviceId: { exact: deviceId },
+              width: { ideal: 1920 },
+              height: { ideal: 1080 },
+            }
           : {
               facingMode: { ideal: "environment" },
               width: { ideal: 1920 },
@@ -98,18 +144,50 @@ export function CameraView({
         await videoRef.current.play().catch(() => {});
       }
 
-      // Check if torch/flashlight is supported
       const track = stream.getVideoTracks()[0];
       if (track) {
         try {
+          // Check continuous autofocus
           const capabilities = (
-            track as unknown as { getCapabilities?: () => { torch?: boolean } }
+            track as unknown as {
+              getCapabilities?: () => {
+                torch?: boolean;
+                zoom?: { min: number; max: number; step: number };
+                focusMode?: string[];
+              };
+            }
           ).getCapabilities?.();
+
           if (capabilities?.torch) {
             setTorchAvailable(true);
           }
+
+          // Check zoom capabilities
+          if (capabilities?.zoom && capabilities.zoom.max > 1) {
+            setZoomSupported(true);
+            setMaxZoom(Math.min(capabilities.zoom.max, 5));
+            setCurrentZoom(1);
+          } else {
+            setZoomSupported(false);
+          }
+
+          // Apply continuous autofocus if available
+          if (capabilities?.focusMode?.includes("continuous")) {
+            try {
+              await (
+                track as MediaStreamTrack & {
+                  applyConstraints: (c: unknown) => Promise<void>;
+                }
+              ).applyConstraints({
+                advanced: [{ focusMode: "continuous" }],
+              });
+            } catch {
+              // Ignore focus constraint errors
+            }
+          }
         } catch {
           setTorchAvailable(false);
+          setZoomSupported(false);
         }
       }
 
@@ -166,6 +244,25 @@ export function CameraView({
     }
   }, [isTorchOn, torchAvailable]);
 
+  // Handle Zoom Toggle (cycles: 1x -> 2x -> 1x)
+  const toggleZoom = React.useCallback(async () => {
+    if (!streamRef.current || !zoomSupported) return;
+    const track = streamRef.current.getVideoTracks()[0];
+    if (!track) return;
+
+    try {
+      const nextZoom = currentZoom >= 2 ? 1 : Math.min(2, maxZoom);
+      await (
+        track as MediaStreamTrack & { applyConstraints: (c: unknown) => Promise<void> }
+      ).applyConstraints({
+        advanced: [{ zoom: nextZoom }],
+      });
+      setCurrentZoom(nextZoom);
+    } catch (err) {
+      console.warn("Failed to set camera zoom:", err);
+    }
+  }, [currentZoom, maxZoom, zoomSupported]);
+
   // Switch Camera
   const switchCamera = React.useCallback(() => {
     if (devices.length < 2) return;
@@ -177,7 +274,19 @@ export function CameraView({
     }
   }, [devices, currentDeviceId, startCamera]);
 
-  // Continuous Barcode Scanning Engine
+  // Trigger positive scan capture event with audio, haptic, and visual flash
+  const handleCaptureBarcode = React.useCallback(
+    (code: string) => {
+      playBarcodeBeep();
+      triggerScanHaptic();
+      setScanFlash(true);
+      setTimeout(() => setScanFlash(false), 380);
+      onBarcodeDetected(code);
+    },
+    [onBarcodeDetected]
+  );
+
+  // High-performance Barcode Scanning Engine
   React.useEffect(() => {
     if (!isScanning || !hasPermission || !videoRef.current) {
       return;
@@ -186,7 +295,7 @@ export function CameraView({
     const video = videoRef.current;
     let isActive = true;
 
-    // Check for native BarcodeDetector API first (standard in modern Chromium & iOS 17+)
+    // Check for native BarcodeDetector API (fastest, hardware accelerated)
     const HasNativeBarcode = typeof window !== "undefined" && "BarcodeDetector" in window;
 
     if (HasNativeBarcode) {
@@ -200,7 +309,16 @@ export function CameraView({
         ).BarcodeDetector;
 
         const detector = new BarcodeDetectorClass({
-          formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128"],
+          formats: [
+            "ean_13",
+            "ean_8",
+            "upc_a",
+            "upc_e",
+            "code_128",
+            "code_39",
+            "itf",
+            "qr_code",
+          ],
         });
 
         const scanLoop = async () => {
@@ -211,17 +329,23 @@ export function CameraView({
             return;
           }
 
-          try {
-            const barcodes = await detector.detect(video);
-            if (barcodes && barcodes.length > 0 && isActive) {
-              const rawValue = barcodes[0].rawValue;
-              if (rawValue) {
-                onBarcodeDetected(rawValue);
-                return;
+          const now = performance.now();
+          // Throttle detection to ~90ms to conserve CPU & battery while remaining instantaneous
+          if (now - lastScanTimestampRef.current >= 90) {
+            lastScanTimestampRef.current = now;
+
+            try {
+              const barcodes = await detector.detect(video);
+              if (barcodes && barcodes.length > 0 && isActive) {
+                const rawValue = barcodes[0].rawValue;
+                if (rawValue && rawValue.trim()) {
+                  handleCaptureBarcode(rawValue.trim());
+                  return;
+                }
               }
+            } catch {
+              // Ignore single frame hiccups
             }
-          } catch {
-            // Ignore frame detection hiccups
           }
 
           if (isActive) {
@@ -242,7 +366,7 @@ export function CameraView({
       }
     }
 
-    // ZXing Fallback (lazy loaded only if native BarcodeDetector is absent)
+    // ZXing Fallback Engine with TRY_HARDER enabled for difficult/angled barcodes
     let isCancelled = false;
     (async () => {
       try {
@@ -255,12 +379,17 @@ export function CameraView({
         if (isCancelled || !isActive || !video) return;
 
         const hints = new Map();
+        // Crucial upgrade: TRY_HARDER enables robust detection of angled, skewed, and curved paperback barcodes
+        hints.set(DecodeHintType.TRY_HARDER, true);
         hints.set(DecodeHintType.POSSIBLE_FORMATS, [
           BarcodeFormat.EAN_13,
           BarcodeFormat.EAN_8,
           BarcodeFormat.UPC_A,
           BarcodeFormat.UPC_E,
           BarcodeFormat.CODE_128,
+          BarcodeFormat.CODE_39,
+          BarcodeFormat.ITF,
+          BarcodeFormat.QR_CODE,
         ]);
 
         const codeReader = new BrowserMultiFormatReader(hints);
@@ -270,8 +399,8 @@ export function CameraView({
             zxingControlsRef.current = controls;
             if (result && isActive) {
               const text = result.getText();
-              if (text) {
-                onBarcodeDetected(text);
+              if (text && text.trim()) {
+                handleCaptureBarcode(text.trim());
               }
             }
           })
@@ -291,7 +420,7 @@ export function CameraView({
         zxingControlsRef.current = null;
       }
     };
-  }, [isScanning, hasPermission, onBarcodeDetected]);
+  }, [isScanning, hasPermission, handleCaptureBarcode]);
 
   // Initial camera mount
   React.useEffect(() => {
@@ -302,7 +431,7 @@ export function CameraView({
   }, [startCamera, stopTracks]);
 
   return (
-    <div className="relative w-full h-full min-h-[420px] bg-black overflow-hidden flex items-center justify-center">
+    <div className="relative w-full h-full min-h-[420px] bg-black overflow-hidden flex items-center justify-center select-none">
       {/* Video Stream Element */}
       <video
         ref={videoRef}
@@ -312,8 +441,50 @@ export function CameraView({
         className="w-full h-full object-cover select-none"
       />
 
+      {/* Visual Success Flash (High-tech scanner pulse) */}
+      <div
+        className={`absolute inset-0 z-15 pointer-events-none transition-opacity duration-300 ${
+          scanFlash
+            ? "bg-emerald-500/25 ring-8 ring-emerald-400/80 opacity-100"
+            : "opacity-0"
+        }`}
+      />
+
       {/* Camera Controls Overlay (Top Right) */}
       <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+        {/* Zoom Button (1x / 2x Toggle) */}
+        {zoomSupported && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={toggleZoom}
+            aria-label={`Toggle camera zoom. Currently ${currentZoom}x`}
+            className="h-10 px-3 rounded-full bg-black/55 text-white hover:bg-black/75 backdrop-blur-md border border-white/20 shadow-md text-xs font-bold gap-1"
+          >
+            <ZoomIn className="h-4 w-4 text-emerald-400" />
+            <span>{currentZoom}x</span>
+          </Button>
+        )}
+
+        {/* Sound Beep Toggle */}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={handleToggleSound}
+          aria-label={isSoundOn ? "Mute scan sound" : "Unmute scan sound"}
+          className="h-10 w-10 rounded-full bg-black/55 text-white hover:bg-black/75 backdrop-blur-md border border-white/20 shadow-md"
+          title={isSoundOn ? "Sound On (Beeps on scan)" : "Sound Muted"}
+        >
+          {isSoundOn ? (
+            <Volume2 className="h-4 w-4 text-emerald-400" />
+          ) : (
+            <VolumeX className="h-4 w-4 text-muted-foreground" />
+          )}
+        </Button>
+
+        {/* Torch / Flashlight Toggle */}
         {torchAvailable && (
           <Button
             type="button"
@@ -321,12 +492,18 @@ export function CameraView({
             size="icon"
             onClick={toggleTorch}
             aria-label={isTorchOn ? "Turn off torch" : "Turn on torch"}
-            className="h-10 w-10 rounded-full bg-black/50 text-white hover:bg-black/70 backdrop-blur-md border border-white/20 shadow-md"
+            className="h-10 w-10 rounded-full bg-black/55 text-white hover:bg-black/75 backdrop-blur-md border border-white/20 shadow-md"
+            title={isTorchOn ? "Flashlight On" : "Flashlight Off"}
           >
-            {isTorchOn ? <Zap className="h-5 w-5 text-amber-400 fill-amber-400" /> : <ZapOff className="h-5 w-5" />}
+            {isTorchOn ? (
+              <Zap className="h-4 w-4 text-amber-400 fill-amber-400" />
+            ) : (
+              <ZapOff className="h-4 w-4" />
+            )}
           </Button>
         )}
 
+        {/* Flip / Switch Camera */}
         {devices.length > 1 && (
           <Button
             type="button"
@@ -334,9 +511,10 @@ export function CameraView({
             size="icon"
             onClick={switchCamera}
             aria-label="Switch camera"
-            className="h-10 w-10 rounded-full bg-black/50 text-white hover:bg-black/70 backdrop-blur-md border border-white/20 shadow-md"
+            className="h-10 w-10 rounded-full bg-black/55 text-white hover:bg-black/75 backdrop-blur-md border border-white/20 shadow-md"
+            title="Switch front/back camera"
           >
-            <FlipHorizontal className="h-5 w-5" />
+            <FlipHorizontal className="h-4 w-4" />
           </Button>
         )}
       </div>
@@ -369,7 +547,7 @@ export function CameraView({
       {hasPermission === null && (
         <div className="absolute inset-0 z-20 bg-slate-950 flex flex-col items-center justify-center text-white">
           <div className="h-12 w-12 rounded-full border-2 border-primary border-t-transparent animate-spin mb-4" />
-          <p className="text-sm font-medium">Connecting to camera...</p>
+          <p className="text-sm font-medium">Connecting to high-speed scanner...</p>
         </div>
       )}
     </div>

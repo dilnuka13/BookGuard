@@ -533,6 +533,16 @@ export interface Database {
         };
         Returns: Json;
       };
+      suggest_authors: {
+        Args: {
+          p_query?: string;
+          p_limit?: number;
+        };
+        Returns: Array<{
+          author: string;
+          book_count: number;
+        }>;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

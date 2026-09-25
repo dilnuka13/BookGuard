@@ -56,11 +56,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: glassInitScript }} />
+      </head>
       <body
         suppressHydrationWarning
         className="min-h-screen bg-background font-sans antialiased selection:bg-primary/20 selection:text-primary"
       >
-        <script dangerouslySetInnerHTML={{ __html: glassInitScript }} />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
